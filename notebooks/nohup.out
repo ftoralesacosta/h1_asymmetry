@@ -1,0 +1,35 @@
+Traceback (most recent call last):
+  File "/global/home/users/ftoralesacosta/anaconda3/envs/tf2/bin/jupyter", line 11, in <module>
+    sys.exit(main())
+  File "/global/home/users/ftoralesacosta/anaconda3/envs/tf2/lib/python3.8/site-packages/jupyter_core/command.py", line 285, in main
+    command = _jupyter_abspath(subcommand)
+  File "/global/home/users/ftoralesacosta/anaconda3/envs/tf2/lib/python3.8/site-packages/jupyter_core/command.py", line 124, in _jupyter_abspath
+    raise Exception(
+Exception: Jupyter command `jupyter-lab` not found.
+[I 2023-07-03 11:15:12.182 ServerApp] jupyterlab | extension was successfully linked.
+[I 2023-07-03 11:15:12.552 ServerApp] nbclassic | extension was successfully linked.
+[W 2023-07-03 11:15:12.613 ServerApp] WARNING: The Jupyter server is listening on all IP addresses and not using encryption. This is not recommended.
+[I 2023-07-03 11:15:12.614 ServerApp] The port 9991 is already in use, trying another port.
+[I 2023-07-03 11:15:12.618 LabApp] JupyterLab extension loaded from /global/home/users/ftoralesacosta/anaconda3/lib/python3.8/site-packages/jupyterlab
+[I 2023-07-03 11:15:12.618 LabApp] JupyterLab application directory is /global/home/users/ftoralesacosta/anaconda3/share/jupyter/lab
+[I 2023-07-03 11:15:12.623 ServerApp] jupyterlab | extension was successfully loaded.
+[I 2023-07-03 11:15:12.628 ServerApp] nbclassic | extension was successfully loaded.
+[I 2023-07-03 11:15:12.628 ServerApp] Serving notebooks from local directory: /global/ml4hep/spss/ftoralesacosta/h1_asymmetry/notebooks
+[I 2023-07-03 11:15:12.629 ServerApp] Jupyter Server 1.4.1 is running at:
+[I 2023-07-03 11:15:12.629 ServerApp] http://ml4hep1.lbl.gov:9992/lab?token=abf54b0fa6a4ae780b734b0892bb55e380e50173a7683001
+[I 2023-07-03 11:15:12.629 ServerApp]  or http://127.0.0.1:9992/lab?token=abf54b0fa6a4ae780b734b0892bb55e380e50173a7683001
+[I 2023-07-03 11:15:12.629 ServerApp] Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).
+[C 2023-07-03 11:15:12.632 ServerApp] 
+    
+    To access the server, open this file in a browser:
+        file:///global/home/users/ftoralesacosta/.local/share/jupyter/runtime/jpserver-14500-open.html
+    Or copy and paste one of these URLs:
+        http://ml4hep1.lbl.gov:9992/lab?token=abf54b0fa6a4ae780b734b0892bb55e380e50173a7683001
+     or http://127.0.0.1:9992/lab?token=abf54b0fa6a4ae780b734b0892bb55e380e50173a7683001
+   This page should redirect you to Jupyter Notebook. If it doesn't, [1]click
+   here to go to Jupyter.
+
+References
+
+   Visible links
+   1. http://localhost:9992/lab?token=abf54b0fa6a4ae780b734b0892bb55e380e50173a7683001
