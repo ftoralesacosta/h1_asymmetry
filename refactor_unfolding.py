@@ -22,24 +22,30 @@ print("Running on MC sample", sys.argv[1], "with setting", sys.argv[2])
 
 # os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 # os.environ['CUDA_VISIBLE_DEVICES'] = "1"
-os.environ['CUDA_VISIBLE_DEVICES'] = "2"
+# os.environ['CUDA_VISIBLE_DEVICES'] = "2"
+os.environ['CUDA_VISIBLE_DEVICES'] = "3"
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.4)
 # session = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 
-# LABEL = "npyFile_Iter30"
-LABEL = "Aug2_unfoldpy"
-save_dir = "/global/ml4hep/spss/ftoralesacosta/new_models"
+# LABEL = "Aug2_unfoldpy"
+LABEL = "Aug19Test_unfoldpy"
 ID = f"{sys.argv[1]}_{sys.argv[2]}_{LABEL}"
 print(f"\n\n ID = {ID} \n\n")
+
+save_dir = "/global/ml4hep/spss/ftoralesacosta/new_models"
+try:
+    os.mkdir(f"{save_dir}/{ID}/")
+except OSError as error:
+    print(error)
 
 
 # tf.random.set_seed(int(sys.argv[3]))
 np.random.seed(int(sys.argv[3]))
 
-test = False
+test = True
 add_asymmetry = False
 leading_jets_only = True
 num_observables = 8
@@ -52,9 +58,10 @@ NPasses = 5
 
 if test:
     NEVENTS = 1_000_000
+    # NEVENTS = -1
     n_epochs = 200
-    NIter = 2
-    NPasses = 2
+    NIter = 20
+    NPasses = 5
 
 inputs_dir = "/clusterfs/ml4hep/yxu2/unfolding_mc_inputs"
 mc = pd.read_pickle(f"{inputs_dir}/{sys.argv[1]}_{sys.argv[2]}.pkl")[:NEVENTS]
@@ -98,13 +105,16 @@ print(f"\n\n SHAPE OF theta_unknown_S {np.shape(theta_unknown_S)} \n\n")
 print(f"\n\n SHAPE OF theta0_S {np.shape(theta0_S)} \n\n")
 
 for ivar in range(8):
-    print(f"theta0_S Variable {reco_vars[ivar]} = ", theta0_S[pass_reco == 1][:5, ivar])
+    print(f"theta0_S Variable {reco_vars[ivar]} = ",
+          theta0_S[pass_reco == 1][:5, ivar])
 print()
 for ivar in range(8):
-    print(f"theta0_S Variable (Truth) {gen_vars[ivar]} = ", theta0_S[pass_truth == 1][:5, ivar])
+    print(f"theta0_S Variable (Truth) {gen_vars[ivar]} = ",
+          theta0_S[pass_truth == 1][:5, ivar])
 print()
 for ivar in range(8):
-    print(f"theta0_G Variable (Truth) {gen_vars[ivar]} = ", theta0_G[pass_truth == 1][:5, ivar])
+    print(f"theta0_G Variable (Truth) {gen_vars[ivar]} = ",
+          theta0_G[pass_truth == 1][:5, ivar])
 
 # Add directly the asymmetry angle to the unfolding.
 if add_asymmetry:
@@ -138,13 +148,16 @@ if add_asymmetry:
 
 #  sys.exit("\n\nEXITING\n\n")
 
+# Mask value = -10
 theta0_S[:, 0][pass_reco == 0] = -10
 theta0_G[:, 0][pass_truth == 0] = -10
 
 del mc
 gc.collect()
 
+
 for p in range(NPasses):
+
     start = time.time()
     print(f"Unfolding Pass {p}...")
 
