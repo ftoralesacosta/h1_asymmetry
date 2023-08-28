@@ -39,8 +39,8 @@ nn_weights_h1rpgp = np.load(f"{processed_dir}/npy_files/from_rapgap_nn_weights.n
 
 mc = "Rapgap"
 # label = f"{mc}_nominal_Aug14Test_unfoldpy"
-# label = "Rapgap_nominal_Aug18Test_unfoldpy"
-label = "Rapgap_nominal_Aug19Test_unfoldpy"
+label = "Rapgap_nominal_Aug18Test_unfoldpy"
+# label = "Rapgap_nominal_Aug19Test_unfoldpy"
 folder = f"/global/ml4hep/spss/ftoralesacosta/new_models/{label}"
 
 fig, axes = plt.subplots(nrows=2, ncols=3,
@@ -57,7 +57,7 @@ rapgap_weights = np.ones(0)
 plot_avg = False
 
 N_Events = 1000_000
-NIter = 50
+NIter = 100
 N_passes = 4
 sum_over_passes = np.zeros((NIter, N_Events))
 

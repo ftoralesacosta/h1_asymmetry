@@ -42,19 +42,23 @@ def multifold(num_observables, iterations,
 
     xvals_1 = np.concatenate((theta0_S, theta_unknown_S))
     yvals_1 = np.concatenate((labels0, labels_unknown))
+
     xvals_2 = np.concatenate((theta0_G, theta0_G))
     yvals_2 = np.concatenate((labels0, labels1))
+
     weights = np.empty(shape=(iterations, 2, len(theta0_G)))
     models = {}
 
     inputs = Input((num_observables, ))
     hidden_layer_1 = Dense(50, activation='relu')(inputs)
     dropoutlayer = Dropout(0.1)(hidden_layer_1)
-    hidden_layer_2 = Dense(50, activation='relu')(dropoutlayer)
+    # hidden_layer_2 = Dense(50, activation='relu')(dropoutlayer)
+    hidden_layer_2 = Dense(100, activation='relu')(dropoutlayer)
     hidden_layer_3 = Dense(50, activation='relu')(hidden_layer_2)
     outputs = Dense(1, activation='sigmoid')(hidden_layer_3)
     model = Model(inputs=inputs, outputs=outputs)
-    earlystopping = EarlyStopping(patience=10,
+
+    earlystopping = EarlyStopping(patience=5,
                                   verbose=verbose,
                                   restore_best_weights=True)
 
@@ -73,6 +77,7 @@ def multifold(num_observables, iterations,
     history = {}
     history['step1'] = []
     history['step2'] = []
+
     for i in range(iterations):
         print("ITERATION: {}".format(i + 1))
         print("STEP 1...")
@@ -80,7 +85,7 @@ def multifold(num_observables, iterations,
         weights_1 = np.concatenate((weights_push, weights_MC_data))
 
         X_train_1, X_test_1, Y_train_1, Y_test_1, w_train_1, w_test_1 = \
-        train_test_split(xvals_1, yvals_1, weights_1)
+            train_test_split(xvals_1, yvals_1, weights_1)
 
         Y_train_1 = np.stack((Y_train_1, w_train_1), axis=1)
         Y_test_1 = np.stack((Y_test_1, w_test_1), axis=1)
@@ -94,14 +99,14 @@ def multifold(num_observables, iterations,
         # print("X Train var0 = ",X_train_1[:,0])
         # print("X Train var1 = ",X_train_1[:,1])
 
-        hist_s1 =  model.fit(X_train_1[X_train_1[:, 0] != -10],
-                             Y_train_1[X_train_1[:, 0] != -10],
-                             epochs=n_epochs,
-                             batch_size=batch_size,
-                             validation_data=(X_test_1[X_test_1[:, 0] != -10],
-                                              Y_test_1[X_test_1[:, 0] != -10]),
-                             callbacks=[earlystopping],
-                             verbose=verbose)
+        hist_s1 = model.fit(X_train_1[X_train_1[:, 0] != -10],
+                            Y_train_1[X_train_1[:, 0] != -10],
+                            epochs=n_epochs,
+                            batch_size=batch_size,
+                            validation_data=(X_test_1[X_test_1[:, 0] != -10],
+                                             Y_test_1[X_test_1[:, 0] != -10]),
+                            callbacks=[earlystopping],
+                            verbose=verbose)
 
         # history['step1'].append(hist_s1)
         weights_pull = weights_push * reweight(theta0_S)
@@ -111,17 +116,24 @@ def multifold(num_observables, iterations,
 
         print("STEP 2...")
         weights_2 = np.concatenate((weights_MC_sim, weights_pull))
+        # having the original weights_MC_sim here means it learns
+        # the weights FROM SCRATCH
 
         # weights_2 = np.concatenate((np.ones(len(theta0_G)), weights_pull))
-        # ones for MC Truth (not MC weights),
-        # actual weights for (reweighted) MC Truth
+
 
         X_train_2, X_test_2, Y_train_2, Y_test_2, w_train_2, w_test_2 = \
-        train_test_split(xvals_2, yvals_2, weights_2)
+            train_test_split(xvals_2, yvals_2, weights_2)
 
         # zip ("hide") the weights with the labels
         Y_train_2 = np.stack((Y_train_2, w_train_2), axis=1)
         Y_test_2 = np.stack((Y_test_2, w_test_2), axis=1)
+
+        print("weights_pull mean = ", np.mean(weights_pull))
+        print("weights_2 mean = ", np.mean(weights_2))
+        print("w_train_2 mean = ", np.mean(w_train_2))
+        print("Y_train_2 mean = ", np.mean(Y_train_2))
+
         model.compile(loss=weighted_binary_crossentropy,
                       optimizer='Adam',
                       metrics=['accuracy'])
@@ -144,5 +156,5 @@ def multifold(num_observables, iterations,
         print(f"Weights for Iteration {i} =", weights[i, 1:2, :])
         models[i, 2] = model.get_weights()
 
-    # K.clear_session()
+    K.clear_session()
     return weights, models, history

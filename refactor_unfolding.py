@@ -30,8 +30,10 @@ tf.config.experimental.set_memory_growth(physical_devices[0], True)
 # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.4)
 # session = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 
+mc = "Rapgap"
 # LABEL = "Aug2_unfoldpy"
-LABEL = "Aug19Test_unfoldpy"
+LABEL = "Aug25TestPrintW_unfoldpy"
+LABEL = f"{mc}_Aug25_30Iter"
 ID = f"{sys.argv[1]}_{sys.argv[2]}_{LABEL}"
 print(f"\n\n ID = {ID} \n\n")
 
@@ -45,23 +47,25 @@ except OSError as error:
 # tf.random.set_seed(int(sys.argv[3]))
 np.random.seed(int(sys.argv[3]))
 
-test = True
+test = False
 add_asymmetry = False
 leading_jets_only = True
 num_observables = 8
 
 NEVENTS = -1
 # NEVENTS = 1_000_000
-n_epochs = 2000
-NIter = 15
+n_epochs = 200
+NIter = 30
 NPasses = 5
 
 if test:
     NEVENTS = 1_000_000
+    NEVENTS = 100_000
     # NEVENTS = -1
-    n_epochs = 200
+    # n_epochs = 200
+    n_epochs = 100
     NIter = 20
-    NPasses = 5
+    NPasses = 1
 
 inputs_dir = "/clusterfs/ml4hep/yxu2/unfolding_mc_inputs"
 mc = pd.read_pickle(f"{inputs_dir}/{sys.argv[1]}_{sys.argv[2]}.pkl")[:NEVENTS]

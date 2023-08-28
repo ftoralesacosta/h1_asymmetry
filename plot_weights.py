@@ -11,6 +11,7 @@ import sys
 from matplotlib import style
 sys.path.insert(0, '../')
 from process_functions import *
+from tqdm import tqdm
 
 style.use('/global/home/users/ftoralesacosta/dotfiles/scientific.mplstyle')
 colors = ['#348ABD', '#C70039', '#FF5733', '#FFC300', '#65E88F', '#40E0D0']
@@ -39,24 +40,17 @@ nn_weights_h1rpgp = np.load(f"{processed_dir}/npy_files/from_rapgap_nn_weights.n
 mc = "Rapgap"
 # label = f"{mc}_nominal_Aug14Test_unfoldpy"
 label = "Rapgap_nominal_Aug18Test_unfoldpy"
+# label = "Rapgap_nominal_Aug19Test_unfoldpy"
 folder = f"/global/ml4hep/spss/ftoralesacosta/new_models/{label}"
-
-# fig, axes = plt.subplots(nrows=5, ncols=6,
-fig, axes = plt.subplots(nrows=10, ncols=10,
-                         figsize=(20, 14), sharex=True, sharey=True)
-
-list = [axes,]
-axes = np.asarray(list)
-axes = axes[0, :, :]
-axes = np.ravel(axes)
 
 django_weights = np.ones(0)
 rapgap_weights = np.ones(0)
 
 plot_avg = False
 
-N_Events = 1000_000
+N_Events = 1_000_000
 NIter = 100
+# NIter = 20
 N_passes = 4
 sum_over_passes = np.zeros((NIter, N_Events))
 
@@ -70,26 +64,36 @@ d_colors = d_colors[::-1]
 django_stdevs = np.zeros((NIter))
 
 file_init = f"{folder}/{label}_Pass0_Step2_Weights.npy"
-
 weights_init = np.load(file_init)[:N_Events]
-# print("SHAPE = ",np.shape(weights_init[0,0))
-
 size_init = len(weights_init[0, 0])
-# print("Length of init = ",len(size_init))
+
+stdevs = np.zeros((N_passes, NIter))
+means = np.zeros((N_passes, NIter))
+
 pass_avgs = np.zeros((NIter, size_init))
 cuts = cuts_h1rpgp[:size_init]
-print("Length of cuts = ",len(cuts))
+print("Length of cuts = ", len(cuts))
 
-for p in range(0, N_passes):
+# fig, axes = plt.subplots(nrows=4, ncols=5,
+fig, axes = plt.subplots(nrows=10, ncols=10,
+                         figsize=(20, 14), sharex=True, sharey=True)
+# list = [axes,]
+axes = np.asarray([axes,])
+axes = axes[0, :, :]
+axes = np.ravel(axes)
+
+for p in tqdm(range(0, N_passes)):
 
     file = f"{folder}/{label}_Pass{p}_Step2_Weights.npy"
     pass_p = np.load(file, allow_pickle=True)[:, 0, :N_Events]
-    print("WEIGHT in LOOP = ", np.shape(pass_p))
+    # print("WEIGHT in LOOP = ", np.shape(pass_p))
 
     for i in range(0, NIter):
 
         weights = pass_p[i]
         print(np.mean(weights), np.std(weights))
+        stdevs[p][i] = np.std(weights)
+        means[p][i] = np.mean(weights)
 
         # Plot
         axes[i].hist(weights[cuts], bins=np.linspace(0, 2, n_bins),
@@ -111,6 +115,36 @@ for p in range(0, N_passes):
                      linestyle='--', linewidth=0.5, histtype='step')
         axes[i].text(1.0, 190, "-- Pass Average", fontsize=7)
 
+
 plt.suptitle("Pre-Averaged Distributions", fontsize=25)
 plt.savefig(f"./plots/{label}_Passes.pdf")
 np.save(f"./weights/{label}_pass_avgs.npy", pass_avgs)
+np.save(f"./weights/{label}_stds.npy", stdevs)
+np.save(f"./weights/{label}_means.npy", means)
+
+# Plot Standard Deviations
+fig = plt.figure(figsize=(10, 10))
+iterations = np.linspace(0, NIter, NIter, endpoint=False)
+print(np.shape(stdevs))
+print(iterations)
+for p in range(N_passes):
+    plt.scatter(iterations, stdevs[p],
+                color=d_colors[p], label=f"Pass {p}")
+    plt.ylim(0, 0.6)
+    plt.xlim(-0.5,NIter+0.5)
+    plt.legend(fontsize=15)
+    plt.ylabel("$\sigma_{weights}$")
+    plt.xlabel("Iteration")
+plt.savefig(f"./plots/{label}_stdevs.pdf")
+
+# Plot Means
+fig = plt.figure(figsize=(10, 10))
+for p in range(N_passes):
+    plt.scatter(iterations, means[p],
+                color=colors[p], label=f"Pass {p}")
+    plt.ylim(0, 2.1)
+    plt.xlim(-0.5,NIter+0.5)
+    plt.legend(fontsize=15)
+    plt.ylabel("$\mu_{weights}$")
+    plt.xlabel("Iteration")
+plt.savefig(f"./plots/{label}_means.pdf")
