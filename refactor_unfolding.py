@@ -9,11 +9,12 @@ import os
 import tensorflow as tf
 import tensorflow.keras
 
+from get_np_arrays import get_kinematics
+
 from unfold import multifold
 from unfold import MASK_VAL
-print("MASK_VAL = ",MASK_VAL)
+print("MASK_VAL = ", MASK_VAL)
 
-from get_np_arrays import get_kinematics
 
 '''
 run like python refactor_unfolding.py Rapgap nominal  0
@@ -26,15 +27,15 @@ if (sys.argv[1] == "Django" and sys.argv[2] == 'closure'):
 gpus = tf.config.experimental.list_physical_devices('GPU')
 for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
-print("GPUs = ",gpus)
+print("GPUs = ", gpus)
 
 
 mc = "Rapgap"
-LABEL = f"{mc}_PlmtrTest_SingleThread_Oct26"
+LABEL = f"{mc}_SingleWorker_Q2_Cut"
 ID = f"{sys.argv[1]}_{sys.argv[2]}_{LABEL}"
 print(f"\n\n ID = {ID} \n\n")
 
-save_dir = "/pscratch/sd/f/fernando/h1_models"
+save_dir = "../h1_models"
 try:
     os.mkdir(f"{save_dir}/{ID}/")
 except OSError as error:
