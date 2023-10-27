@@ -30,7 +30,7 @@ print("GPUs = ",gpus)
 
 
 mc = "Rapgap"
-LABEL = f"{mc}_PlmtrTest_Aug28"
+LABEL = f"{mc}_PlmtrTest_SingleThread_Oct26"
 ID = f"{sys.argv[1]}_{sys.argv[2]}_{LABEL}"
 print(f"\n\n ID = {ID} \n\n")
 
@@ -217,6 +217,11 @@ for p in range(NPasses):
                                          theta_unknown_S, n_epochs)
 
     tf.keras.backend.clear_session()
+
     np.save(f"{save_dir}/{ID}/{ID}_Pass{p}_Step2_Weights.npy", weights[:, 1:2, :])
+    np.save(f"{save_dir}/{ID}/{ID}_Pass{p}_Step2_History.npy", weights[:, 1:2, :])
+
+    np.save(f"{save_dir}/{ID}/{ID}_Pass{p}_Step1_Weights.npy", weights[:, 0:1, :])
+    np.save(f"{save_dir}/{ID}/{ID}_Pass{p}_Step1_History.npy", weights[:, 0:1, :])
 
     print(f"Pass {p} took {time.time() - start} seconds \n")
