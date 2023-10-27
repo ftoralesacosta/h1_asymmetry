@@ -77,6 +77,10 @@ print(f"Data = {inputs_dir}/Data_nominal.pkl")
 print(np.shape(mc))
 print(np.shape(data))
 
+gen_Q2 = mc['gen_Q2'].to_numpy()
+gen_underQ2 = gen_Q2 < 100
+print("length of Q2 array = ",np.shape(gen_Q2))
+
 if (leading_jets_only):
     njets_tot = len(data["e_px"])
     data = data.loc[(slice(None), 0), :]
@@ -165,9 +169,18 @@ if add_asymmetry:
 
 # DATA CLEANING
 # Mask value = -10
+
+
+
 #FIXME: MAKE SURE KINEMATICS WON'T NATURALLY BE MASK VALUE
+# It's almost impossible for a value to be exactly the MASK_val
+
 theta0_S[:, 0][pass_reco == 0] = MASK_VAL
 theta0_G[:, 0][pass_truth == 0] = MASK_VAL
+
+theta0_S[:, 0][gen_underQ2] = MASK_VAL
+theta0_G[:, 0][gen_underQ2] = MASK_VAL
+theta_unknown_S[data_underQ2] = MASK_VAL
 
 theta0_S[theta0_S == np.inf] = MASK_VAL
 theta0_G[theta0_G == np.inf] = MASK_VAL
@@ -175,7 +188,12 @@ theta_unknown_S[theta_unknown_S == np.inf] = MASK_VAL
 
 np.nan_to_num(theta0_S, copy=False, nan =MASK_VAL)
 np.nan_to_num(theta0_G, copy=False, nan =MASK_VAL)
-np.nan_to_num(theta_unknown_S, copy=False, nan =MASK_VAL)
+
+
+
+
+
+
 
 print("="*50)
 print("L: 187")
