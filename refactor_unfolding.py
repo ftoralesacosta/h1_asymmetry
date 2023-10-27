@@ -12,7 +12,7 @@ import tensorflow.keras
 from unfold import multifold
 from unfold import MASK_VAL
 print("MASK_VAL = ",MASK_VAL)
- 
+
 from get_np_arrays import get_kinematics
 
 '''
