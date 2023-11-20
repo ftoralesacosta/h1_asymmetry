@@ -12,9 +12,11 @@ import tensorflow.keras
 from get_np_arrays import get_kinematics
 
 from unfold import multifold
+
 from unfold import MASK_VAL
 print("MASK_VAL = ", MASK_VAL)
 
+os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 
 '''
 run like python refactor_unfolding.py Rapgap nominal  0
@@ -24,13 +26,19 @@ print("Running on MC sample", sys.argv[1], "with setting", sys.argv[2])
 if (sys.argv[1] == "Django" and sys.argv[2] == 'closure'):
     sys.exit("closure test must be run with Rapgap as MC")
 
-gpus = tf.config.experimental.list_physical_devices('GPU')
-for gpu in gpus:
-    tf.config.experimental.set_memory_growth(gpu, True)
-print("GPUs = ", gpus)
+# gpus = tf.config.experimental.list_physical_devices('GPU')
+# for gpu in gpus:
+#     tf.config.experimental.set_memory_growth(gpu, True)
+# print("GPUs = ", gpus)
 
 
-mc = "Rapgap"
+physical_devices = tf.config.list_physical_devices('GPU')
+tf.config.experimental.set_memory_growth(physical_devices[0], True)
+print("GPUs = ", physical_devices)
+
+# mc = "Rapgap"
+# mc = "Django"
+mc = sys.argv[1]
 LABEL = f"{mc}_SingleWorker_Q2_Cut"
 ID = f"{sys.argv[1]}_{sys.argv[2]}_{LABEL}"
 print(f"\n\n ID = {ID} \n\n")
@@ -45,23 +53,26 @@ except OSError as error:
 # tf.random.set_seed(int(sys.argv[3]))
 np.random.seed(int(sys.argv[3]))
 
-test = True
 add_asymmetry = False
 leading_jets_only = True
 num_observables = 8
 
 NEVENTS = -1
-n_epochs = 200
-NIter = 30
+n_epochs = 1000
+NIter = 5
 NPasses = 5
 
+test = False
 if test:
-    NEVENTS = 1_000_000
+    LABEL = LABEL+"_TEST"
+    NEVENTS = -1
     n_epochs = 10
     NIter = 5
-    NPasses = 2
+    NPasses = 1
 
-inputs_dir = "/pscratch/sd/f/fernando/h1_data"
+# inputs_dir = "/pscratch/sd/f/fernando/h1_data"
+
+inputs_dir = "/clusterfs/ml4hep/yxu2/unfolding_mc_inputs"
 
 if sys.argv[2] == 'closure':
     data = pd.read_pickle(f"{inputs_dir}/Django_nominal.pkl")
@@ -78,9 +89,6 @@ print(f"Data = {inputs_dir}/Data_nominal.pkl")
 print(np.shape(mc))
 print(np.shape(data))
 
-gen_Q2 = mc['gen_Q2'].to_numpy()
-gen_underQ2 = gen_Q2 < 100
-print("length of Q2 array = ",np.shape(gen_Q2))
 
 if (leading_jets_only):
     njets_tot = len(data["e_px"])
@@ -89,6 +97,13 @@ if (leading_jets_only):
     print("Number of subjets cut = ",
           njets_tot-len(data["e_px"]), " / ",
           len(data["jet_pt"]))
+
+# print("\n\nFirst 5 Events = ", mc.head(5))
+# print("Last 5 Events = ", mc.tail(5))
+
+gen_Q2 = mc['gen_Q2'].to_numpy()
+gen_underQ2 = gen_Q2 < 100
+print("length of Q2 array = ",np.shape(gen_Q2))
 
 reco_vars = ['e_px', 'e_py', 'e_pz',
              'jet_pt', 'jet_eta', 'jet_phi',
@@ -181,7 +196,7 @@ theta0_G[:, 0][pass_truth == 0] = MASK_VAL
 
 theta0_S[:, 0][gen_underQ2] = MASK_VAL
 theta0_G[:, 0][gen_underQ2] = MASK_VAL
-theta_unknown_S[data_underQ2] = MASK_VAL
+# theta_unknown_S[data_underQ2] = MASK_VAL
 
 theta0_S[theta0_S == np.inf] = MASK_VAL
 theta0_G[theta0_G == np.inf] = MASK_VAL

@@ -1,0 +1,5 @@
+main_dir  : /global/ml4hep/spss/ftoralesacosta/h1_asymmetry
+mc        : Django
+run_type  : nominal
+identifier: SingleWorker_Q2_Cut
+
