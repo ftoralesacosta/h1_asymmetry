@@ -164,6 +164,45 @@ def pickle_dict(dic, save_name, folder='.'):
     file.close()
 
 
+def get_uncertainties(sys_keys, nested_sys_dict, qed_dict):
+
+    sys_uncertainties = {}
+    print(nested_sys_dict.keys())
+    nominal = nested_sys_dict['nominal']
+
+    for syst in sys_keys:
+        if syst == "QED":
+            sys_uncertainties[syst] = QED_systematic(qed_dict)
+            continue
+            # also plots QED
+
+        inner_dict = {}
+        for inner_key in nominal.keys():
+            inner_dict[inner_dict] = np.abs(nominal[inner_key] -
+                                            sys_uncertainties[syst][inner_key])
+        sys_uncertainties[syst] = inner_dict
+
+    return sys_uncertainties
+
+
+def sum_in_quadruture(sys_dict):
+    # sum uncertainties in quadrature
+
+    keys = sys_dict.keys()
+    kinematics = sys_dict['nominal'].keys()
+    total_sys = {k: 0 for k in kinematics}  # init to 0
+
+    for kinematic in kinematics:
+        for key in keys:
+            total_sys[kinematic] += sys_dict[key][kinematic]**2
+
+        total_sys[kinematic] = np.sqrt(total_sys[kinematic])
+
+    sys_dict['total'] = total_sys
+
+    return
+
+
 # Define Dictionary for labels in plotting. Maps code to Systematic
 label = {}
 label['sys_0'] = 'HFS scale (in jet)'
@@ -212,25 +251,9 @@ nested_sys_dict = get_sys_dictionaries(keys, suffix, do_sys_calc)
 do_qed_calc = False
 qed_dict = get_QED_dict(qed_keys, do_qed_calc)
 
-def get_systematics(sys_keys, nested_sys_dict):
 
-    systematics = {}
-    print(nested_sys_dict.keys())
-    nominal = nested_sys_dict['nominal']
+# Consolidate all the uncertainties
+uncertainties= get_uncertainties(keys, nested_sys_dict, qed_dict)
+sum_in_quadruture(uncertainties)  # appends 'total' to dict
 
-    for syst in sys_keys:
-        if sys == "QED": continue
-
-        inner_dict = {}
-        for inner_key in nominal.keys():
-            inner_dict[inner_dict] = np.abs(nominal[inner_key] -
-                                            systematics[syst][inner_key])
-        systematics[syst] = inner_dict
-
-    return systematics
-
-
-
-systematics = get_systematics(keys, nested_sys_dict)
-systematics["QED"] = QED_systematic(qed_dict)  # also plots QED
-# qed_sys = QED_systematic(qed_dict)  # also plots QED
+pickle_dict(uncertainties, f'uncertainties.pkl', folder='./pkls')
