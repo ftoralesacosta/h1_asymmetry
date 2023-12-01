@@ -1,15 +1,15 @@
 import sys
-
 import numpy as np
 import pandas as pd
 import gc
-import time
+import uproot as ur
+import yaml
+# import time
 # import tensorflow as tf
 # from sklearn.preprocessing import StandardScaler
-import h5py
+# import h5py
 # from unfold import weighted_binary_crossentropy
 
-import uproot as ur
 
 # 1 make sure q2 is obtained
 # 2 load nn weights from new npy files
@@ -18,34 +18,54 @@ import uproot as ur
 # 5 save np files with label from mc_name
 
 
-def npy_from_pkl(label, load_NN=True, pkl_path="", mc="Rapgap", type="nominal", keys=[]):
+def npy_from_pkl(label, suffix="", load_NN=True, pkl_path="",
+                 mc="Rapgap", run_type="nominal", keys=[]):
 
     if (pkl_path == ""):
-        pkl_path = "/pscratch/sd/f/fernando/h1_data"
+        # pkl_path = "/pscratch/sd/f/fernando/h1_data"
+        pkl_path = "/clusterfs/ml4hep/yxu2/unfolding_mc_inputs/"
 
-    #DATA LOADING
+    # DATA LOADING
     if ".pkl" in pkl_path:
-        print("Loading PKL directly from argument: ",pkl_path)
+        print("Loading PKL directly from argument: ", pkl_path)
         mc = pd.read_pickle(pkl_path)
 
     else:
-        print("Loading PKL ", f"{pkl_path}/{mc}_{type}.pkl")
-        mc = pd.read_pickle(f"{pkl_path}/{mc}_{type}.pkl") 
-
+        print("Loading PKL ", f"{pkl_path}/{mc}_{run_type}.pkl")
+        mc = pd.read_pickle(f"{pkl_path}/{mc}_{run_type}.pkl")
 
     print("MC SHAPE = ", np.shape(mc))
     leading_jets_only = True
     if (leading_jets_only):
         njets_tot = len(mc["e_px"])
-        mc = mc.loc[(slice(None),0), :]
-        print("Number of subjets cut = ",njets_tot-len(mc["jet_pt"])," / ",len(mc["jet_pt"]))
+        mc = mc.loc[(slice(None), 0), :]
+        print("Number of subjets cut = ",
+              njets_tot-len(mc["jet_pt"]), " / ", len(mc["jet_pt"]))
 
     print("MC SHAPE = ", np.shape(mc))
     if not keys:
-        keys = ['gene_px','gene_py','gene_pz','genjet_pt','genjet_eta',
-                   'genjet_phi','genjet_dphi','genjet_qtnorm', 'gen_Q2']
+        keys = ['gene_px', 'gene_py', 'gene_pz', 'genjet_pt', 'genjet_eta',
+                'genjet_phi', 'genjet_dphi', 'genjet_qtnorm', 'gen_Q2']
+
+    # print("First 5 Events = ", mc.head(5))
+    # print("Last 5 Events = ", mc.tail(5))
+
+    print("*"*30)
+    print("Current Dir = ", sys.path[0])
+    # home = '/clusterfs/ml4hep_nvme2/ftoralesacosta/h1_models'
+    home = '/global/ml4hep/spss/ftoralesacosta/h1_models'
+    NN_step2_weights = np.load(f"{home}/{label}/{label}_Pass0_Step2_Weights.npy")[-1,0]
+    print("WEIGHTS SHAPE = ", np.shape(NN_step2_weights))
+
+    # Ensure lengths are the same.
+    # Was previously checked, if mismatch, the TAIL is
+    # cut. So taking the first N events matches eventns to weights
+    NEVENTS = min(len(NN_step2_weights), len(mc))
+    NN_step2_weights = NN_step2_weights[:NEVENTS]
+    mc = mc[:NEVENTS]
 
     theta0_G = mc[keys].to_numpy()
+
     print("shape of theta0_G = ", np.shape(theta0_G) )
     weights_MC_sim = mc['wgt']
     pass_reco = np.array(mc['pass_reco'])
@@ -54,18 +74,17 @@ def npy_from_pkl(label, load_NN=True, pkl_path="", mc="Rapgap", type="nominal", 
     del mc
     _ = gc.collect()
 
+    # home = '/pscratch/sd/f/fernando/h1_models'
 
-    home = '/pscratch/sd/f/fernando/h1_models'
     # NN_step2_weights = np.load(f"../weights/{label}_pass_avgs.npy")[-1]
     # NN_step2_weights = np.load(f"../h1_models/{label}/{label}_Pass0_Step2_Weights.npy")[-1]
-    NN_step2_weights = np.load(f"{home}/{label}/{label}_Pass0_Step2_Weights.npy")[-1,0]
+
     # Q^2 Cut already applied to NN weights in unfolding procedure!!!
 
     # NN_step2_weights = np.load(f"/pscratch/sd/f/fernando/h1_models/Rapgap_nominal_Rapgap_HVDRapgap_Sep25/Rapgap_nominal_Rapgap_HVDRapgap_Sep25_Pass0_Step2_Weights.npy")[-1,0]
     # NN_step2_weights = np.load(f"/pscratch/sd/f/fernando/h1_models/Rapgap_nominal_Rapgap_HVDRapgap_NCCL_Oct17/Rapgap_nominal_Rapgap_HVDRapgap_NCCL_Oct17_Pass0_Step2_Weights.npy")[-1,0]
 
     # take the last iteration, MultiFold learns from SCRATCH here
-    print("WEIGHTS SHAPE = ", np.shape(NN_step2_weights))
 
     # KINEMATICS
     q_perp_mag, jet_pT_mag, asymm_phi, jet_qT_norm, Q2 = get_kinematics(theta0_G)
@@ -75,19 +94,26 @@ def npy_from_pkl(label, load_NN=True, pkl_path="", mc="Rapgap", type="nominal", 
     cuts = get_cuts(pass_fiducial, pass_truth, q_perp_mag, jet_pT_mag, 
                     asymm_phi, jet_qT_norm, Q2)
 
+    apply_Q2_cut = True
+    if (apply_Q2_cut):
+        Q2 = np.ones(len(q_perp_mag), dtype=bool)
+    else:
+        label += "NO_Q2_CUT_APPLIED"
+
     print("Cuts SHAPE = ", np.shape(cuts))
     weights = weights_MC_sim[cuts] 
     print("SHAPE after Cuts = ", np.shape(weights))
-    weights *= NN_step2_weights
+    weights *= NN_step2_weights[cuts]
 
-    np.save('npy_files/'+label+'_cuts.npy',cuts)
-    np.save('npy_files/'+label+'_jet_pT.npy',jet_pT_mag)
-    np.save('npy_files/'+label+'_q_perp.npy',q_perp_mag)
-    np.save('npy_files/'+label+'_Q2.npy',Q2)
-    np.save('npy_files/'+label+'_asymm_angle.npy',asymm_phi)
-    np.save('npy_files/'+label+'_weights.npy',weights)
-    np.save('npy_files/'+label+'_nn_weights.npy',NN_step2_weights)
-    np.save('npy_files/'+label+'_mc_weights.npy',weights_MC_sim)
+    npy_dir = '/global/ml4hep/spss/ftoralesacosta/h1_asymmetry/npy_files/'
+    np.save(f'{npy_dir}/{label}_cuts.npy', cuts)
+    np.save(f'{npy_dir}/{label}_jet_pT.npy', jet_pT_mag)
+    np.save(f'{npy_dir}/{label}_q_perp.npy', q_perp_mag)
+    np.save(f'{npy_dir}/{label}_Q2.npy', Q2)
+    np.save(f'{npy_dir}/{label}_asymm_angle.npy', asymm_phi)
+    np.save(f'{npy_dir}/{label}_weights.npy', weights)
+    np.save(f'{npy_dir}/{label}_nn_weights.npy', NN_step2_weights)
+    np.save(f'{npy_dir}/{label}_mc_weights.npy', weights_MC_sim)
 
 
 #Primarily for Loading ROOT files, e.g. PYTHIA
@@ -176,11 +202,11 @@ def get_kinematics(theta0_G):
 def get_cuts(pass_fiducial, pass_truth, q_perp_mag, jet_pT_mag, asymm_phi, jet_qT, genQ2=None):
     print("Getting Cut Mask")
 
-    # pT_cut = jet_pT_mag > 10.
-    pT_cut = jet_pT_mag > 20. #Test only for Feb 17
+    pT_cut = jet_pT_mag > 10.
+    # pT_cut = jet_pT_mag > 20. #Test only for Feb 17
     q_over_pT_cut = q_perp_mag/jet_pT_mag < 0.3 #Kyle guessed ~0.3, may need variation
-    # qT_cut = np.where((jet_qT<0.25), True, False)
-    qT_cut = jet_qT < 0.25
+    qT_cut = np.where((jet_qT<0.25), True, False)
+    # qT_cut = jet_qT < 0.25
     phi_nan_cut = ~np.isnan(asymm_phi)
     # print("PHI Not NaN",np.any(phi_nan_cut))
 
@@ -192,7 +218,7 @@ def get_cuts(pass_fiducial, pass_truth, q_perp_mag, jet_pT_mag, asymm_phi, jet_q
     cut_arrays = [
         Q2_cut,
         jet_pT_mag_nan,
-        pass_truth,
+        # pass_truth,
         pass_fiducial,
         pT_cut,
         q_over_pT_cut,
@@ -217,3 +243,21 @@ def get_cuts(pass_fiducial, pass_truth, q_perp_mag, jet_pT_mag, asymm_phi, jet_q
         cuts = np.logical_and(cuts, Q2_cut)
 
     return cuts
+
+
+if __name__ == '__main__':
+
+    CONFIG_FILE = "./config.yaml"
+    config = yaml.safe_load(open(CONFIG_FILE))
+    print(f"\nLoaded {CONFIG_FILE}\n")
+
+    mc = config['mc']  # Rapgap, Django, Pythia
+    run_type = config['run_type']  # nominal, bootstrap, systematic
+    processed_dir = config['main_dir']
+    run_identifier = config['identifier']
+
+    LABEL = f"{mc}_{run_type}_{mc}_{run_identifier}"
+
+    # Rapgap_nominal_Rapgap_SingleWorker_Q2_Cut
+    npy_from_pkl(LABEL, mc=mc)
+    print("Calculating Kinematics")
