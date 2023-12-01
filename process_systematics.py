@@ -9,6 +9,7 @@ from process_functions import averages_in_qperp_bins
 
 from matplotlib import style
 style.use('/global/home/users/ftoralesacosta/dotfiles/scientific.mplstyle')
+# style.use('~/dotfiles/scientific.mplstyle')
 
 
 def process_sys_npy(keys, suffix, mc_name='Rapgap'):
@@ -150,12 +151,12 @@ def plot_QED(qed_dict, qed_sys, savedir = './plots/systematics'):
     return
 
 
-def QED_systematic(qed_dict):
+# def QED_systematic(qed_dict):
 
-    qed_sys = get_QED_sys(qed_dict)
-    plot_QED(qed_dict, qed_sys)
+#     qed_sys = get_QED_sys(qed_dict)
+#     plot_QED(qed_dict, qed_sys)
 
-    return qed_sys
+#     return qed_sys
 
 
 def pickle_dict(dic, save_name, folder='.'):
@@ -167,19 +168,22 @@ def pickle_dict(dic, save_name, folder='.'):
 def get_uncertainties(sys_keys, nested_sys_dict, qed_dict):
 
     sys_uncertainties = {}
+    print("LINE 171")
     print(nested_sys_dict.keys())
     nominal = nested_sys_dict['nominal']
 
     for syst in sys_keys:
+        # if syst == 'nominal': continue
         if syst == "QED":
-            sys_uncertainties[syst] = QED_systematic(qed_dict)
+            sys_uncertainties[syst] = get_QED_sys(qed_dict)
+            plot_QED(qed_dict, sys_uncertainties[syst])
             continue
             # also plots QED
 
         inner_dict = {}
         for inner_key in nominal.keys():
-            inner_dict[inner_dict] = np.abs(nominal[inner_key] -
-                                            sys_uncertainties[syst][inner_key])
+            inner_dict[inner_key] = np.abs(nominal[inner_key] -
+                                            nested_sys_dict[syst][inner_key])
         sys_uncertainties[syst] = inner_dict
 
     return sys_uncertainties
