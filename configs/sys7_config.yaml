@@ -1,0 +1,8 @@
+main_dir  : /global/ml4hep/spss/ftoralesacosta/h1_asymmetry
+model_dir  : /global/ml4hep/spss/ftoralesacosta/h1_models
+mc        : Rapgap
+run_type  : sys_7
+identifier: SingleWorker_Q2_Cut
+n_iterations: 5
+n_passes: 4
+
