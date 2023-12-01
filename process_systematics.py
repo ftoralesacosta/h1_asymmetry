@@ -8,8 +8,8 @@ from get_np_arrays import npy_from_pkl
 from process_functions import averages_in_qperp_bins
 
 from matplotlib import style
-style.use('/global/home/users/ftoralesacosta/dotfiles/scientific.mplstyle')
-# style.use('~/dotfiles/scientific.mplstyle')
+# style.use('/global/home/users/ftoralesacosta/dotfiles/scientific.mplstyle')
+style.use('~/dotfiles/scientific.mplstyle')
 
 
 def process_sys_npy(keys, suffix, mc_name='Rapgap'):
@@ -182,6 +182,11 @@ def get_uncertainties(sys_keys, nested_sys_dict, qed_dict):
 
         inner_dict = {}
         for inner_key in nominal.keys():
+
+            if inner_key == 'q_perp': 
+                inner_dict[inner_key] = nominal[inner_key]
+                continue
+
             inner_dict[inner_key] = np.abs(nominal[inner_key] -
                                             nested_sys_dict[syst][inner_key])
         sys_uncertainties[syst] = inner_dict
@@ -207,6 +212,84 @@ def sum_in_quadruture(sys_dict):
     return
 
 
+def plot_variations(sys_dict, color_dict):
+    fig, axes = plt.subplots(1, 3, figsize=(22, 7))
+
+    for i, kin in enumerate(["cos1", "cos2", "cos3"]):
+        for syst in sys_dict.keys():
+            if syst == "QED": continue
+
+            # print(sys_dict[syst]['q_perp'])
+            axes[i].errorbar(sys_dict[syst]["q_perp"], sys_dict[syst][kin],
+                             label=syst, color=color_dict[syst], linewidth=3)
+
+            string = r"$\cos(%i\phi)$" % (i+1)
+            string = string.replace("1", "")
+            axes[i].set_ylabel(string, fontsize=28)
+            axes[i].set_xlabel("$q_\perp$ [GeV]", fontsize=28)
+            axes[0].legend(fontsize=15)
+
+
+    plt.tight_layout()
+    plt.savefig("./plots/systematics/systematics_unfolded_separately.pdf")
+
+    return
+
+
+def plot_uncertanties(uncertainties, color_dict):
+
+    keys=["q_perp","cos1","cos2","cos3"]
+    fig,axes = plt.subplots(1,3,figsize=(22,7))
+
+    plot_model = True
+    plot_bootstrap = False
+    plot_original_diff = False
+
+    plot_sys0 = True
+    plot_sys1 = True
+    plot_sys5 = True
+    plot_sys7 = True
+    plot_sys11 = True
+    plot_sysQED = True
+
+    axes[0].set_ylim(-0.01, 0.15)
+    axes[1].set_ylim(-0.01, 0.15)
+    axes[2].set_ylim(-0.01, 0.15)
+
+    for i, kin in enumerate(["cos1", "cos2", "cos3"]):
+
+        for syst in uncertainties.keys():
+
+            if syst == 'nominal': continue
+            print("L263: ")
+            print(syst, uncertainties[syst]['q_perp'])
+            axes[i].errorbar(uncertainties['nominal']["q_perp"],
+                             uncertainties[syst][kin],
+                             label=syst,
+                             color=color_dict[syst], linewidth=3)
+
+        # if (plot_bootstrap):
+        #     axes[i].errorbar(nominal["q_perp"], np.abs(abs_bootstrap_errors[key]),
+        #             label="Stat. Uncertainty", color="grey", linestyle="-", linewidth=3)
+
+            # axes[0].set_ylim(-0.01,1.5)
+            # axes[1].set_ylim(-0.01,1.5)
+            # axes[2].set_ylim(-0.01,1.5)
+
+        string = r"$\cos(%i\phi)$ Error [abs.]" % (i+1)
+        string = string.replace("1", "")
+        axes[i].set_ylabel(string)
+        axes[i].set_xlabel("$q_\perp [GeV]$")
+
+    axes[0].text(0.04, 0.92, "H1 Preliminary", transform=axes[0].transAxes, fontsize=22) 
+
+    plt.tight_layout()
+    plt.legend(fontsize=20)
+    plt.savefig("./plots/systematics/absError_systematics_unfolded_separately.pdf")
+
+    return
+
+
 # Define Dictionary for labels in plotting. Maps code to Systematic
 label = {}
 label['sys_0'] = 'HFS scale (in jet)'
@@ -217,6 +300,11 @@ label['sys_11'] = 'Lepton $\phi$ angle'
 label['QED']  = 'QED rad corr.'
 
 keys = ['nominal', 'model', 'QED', 'sys_0', 'sys_1', 'sys_5', 'sys_7', 'sys_11']
+
+colors = ['black', '#348ABD', 'blue', '#C70039',
+          '#FF5733', '#FFC300', '#65E88F', '#40E0D0']
+color_dict = {keys[i]: colors[i] for i in range(len(colors))}
+color_dict['total'] = 'grey'
 
 qed_keys = ["Rapgap_nominal_Rady", "Rapgap_nominal_noRady",
             "Django_nominal_Rady", "Django_nominal_noRady"]
@@ -257,7 +345,10 @@ qed_dict = get_QED_dict(qed_keys, do_qed_calc)
 
 
 # Consolidate all the uncertainties
-uncertainties= get_uncertainties(keys, nested_sys_dict, qed_dict)
+uncertainties = get_uncertainties(keys, nested_sys_dict, qed_dict)
 sum_in_quadruture(uncertainties)  # appends 'total' to dict
+pickle_dict(uncertainties, 'uncertainties.pkl', folder='./pkls')
 
-pickle_dict(uncertainties, f'uncertainties.pkl', folder='./pkls')
+
+plot_variations(nested_sys_dict, color_dict)
+plot_uncertanties(uncertainties, color_dict)
