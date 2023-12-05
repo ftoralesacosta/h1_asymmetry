@@ -5,6 +5,7 @@ import pandas as pd
 import gc
 import time
 import os
+import yaml
 
 import tensorflow as tf
 import tensorflow.keras
@@ -22,9 +23,6 @@ os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 run like python refactor_unfolding.py Rapgap nominal  0
 [command] [Rapgap or Django] [run_type: nominal, sys_0...] [BOOTSTRAPPING Seed]
 '''
-print("Running on MC sample", sys.argv[1], "with setting", sys.argv[2])
-if (sys.argv[1] == "Django" and sys.argv[2] == 'closure'):
-    sys.exit("closure test must be run with Rapgap as MC")
 
 # gpus = tf.config.experimental.list_physical_devices('GPU')
 # for gpu in gpus:
@@ -33,25 +31,45 @@ if (sys.argv[1] == "Django" and sys.argv[2] == 'closure'):
 
 
 physical_devices = tf.config.list_physical_devices('GPU')
-tf.config.experimental.set_memory_growth(physical_devices[0], True)
+# tf.config.experimental.set_memory_growth(physical_devices[0], True)
 print("GPUs = ", physical_devices)
 
+
+# Load the Config File
+if len(sys.argv) <= 1:
+    CONFIG_FILE = "./configs/config.yaml"
+else:
+    CONFIG_FILE = sys.argv[1]
+
+config = yaml.safe_load(open(CONFIG_FILE))
+print(f"\nLoaded {CONFIG_FILE}\n")
+
 # mc = "Rapgap"
-# mc = "Django"
-mc = sys.argv[1]
-LABEL = f"{mc}_SingleWorker_Q2_Cut"
-ID = f"{sys.argv[1]}_{sys.argv[2]}_{LABEL}"
+# LABEL = f"{mc}_SingleWorker_Q2_Cut"
+# ID = f"{sys.argv[1]}_{sys.argv[2]}_{LABEL}"
+
+mc = config['mc']
+run_type = config['run_type']
+LABEL = config['identifier']
+
+ID = f"{mc}_{run_type}_{LABEL}"
 print(f"\n\n ID = {ID} \n\n")
 
-save_dir = "../h1_models"
+print("Running on MC sample", mc, "with setting", run_type)
+if (mc == "Django" and run_type == 'closure'):
+    sys.exit("closure test must be run with Rapgap as MC")
+
+# save_dir = "../h1_models"
+save_dir = config['model_dir']
+
 try:
     os.mkdir(f"{save_dir}/{ID}/")
 except OSError as error:
     print(error)
 
 
-# tf.random.set_seed(int(sys.argv[3]))
-np.random.seed(int(sys.argv[3]))
+# # tf.random.set_seed(int(sys.argv[3]))
+# np.random.seed(int(sys.argv[3]))
 
 add_asymmetry = False
 leading_jets_only = True
@@ -73,6 +91,7 @@ if test:
 # inputs_dir = "/pscratch/sd/f/fernando/h1_data"
 
 inputs_dir = "/clusterfs/ml4hep/yxu2/unfolding_mc_inputs"
+inputs_dir = config['data_dir']
 
 if sys.argv[2] == 'closure':
     data = pd.read_pickle(f"{inputs_dir}/Django_nominal.pkl")
