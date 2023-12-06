@@ -40,17 +40,19 @@ run_type = config['run_type']  # nominal, bootstrap, systematic
 LABEL = config['identifier']
 ID = f"{mc_type}_{run_type}_{LABEL}"
 
+if config['is_test']:
+    ID = ID + "_TEST"  # avoid overwrites of nominal
+
 print(f"Running on MC sample {mc_type} with setting, {run_type}")
 print(f"\n\n ID = {ID} \n\n")
 
-save_dir = "../h1_models"
+save_dir = model_folder
 try:
     os.mkdir(f"{save_dir}/{ID}/")
 except OSError as error:
     print(error)
 
 
-# tf.random.set_seed(int(sys.argv[3]))
 np_seed = 0
 if len(sys.argv) > 2:
     np_seed = int(float(sys.argv[2]))
@@ -67,7 +69,6 @@ NIter = config['n_iterations']
 NPasses = config['n_passes']
 
 if config['is_test']:
-    LABEL = LABEL+"_TEST"
     NEVENTS = 100_000  # usually not enough for results
     n_epochs = 10
     NIter = 5
