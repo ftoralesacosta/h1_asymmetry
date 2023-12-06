@@ -1,8 +1,14 @@
-main_dir  : /global/ml4hep/spss/ftoralesacosta/h1_asymmetry
-model_dir  : /global/ml4hep/spss/ftoralesacosta/h1_models
-mc        : Rapgap
-run_type  : sys_1
-identifier: SingleWorker_Q2_Cut
-n_iterations: 5
-n_passes: 4
+main_dir          : /global/ml4hep/spss/ftoralesacosta/h1_asymmetry
+model_dir         : /global/ml4hep/spss/ftoralesacosta/h1_models
+data_dir          : /clusterfs/ml4hep/yxu2/unfolding_mc_inputs
 
+mc                : Rapgap
+run_type          : sys1
+identifier        : SingleWorker_Q2_Cut
+
+is_test           : False
+n_epochs          : 1000
+n_iterations      : 10
+n_passes          : 5
+
+q_bins            : [ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  8., 10.]

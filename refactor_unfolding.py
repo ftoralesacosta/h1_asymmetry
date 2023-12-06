@@ -8,6 +8,7 @@ import os
 
 import tensorflow as tf
 import tensorflow.keras
+import yaml
 
 from get_np_arrays import get_kinematics
 
@@ -16,29 +17,30 @@ from unfold import multifold
 from unfold import MASK_VAL
 print("MASK_VAL = ", MASK_VAL)
 
-os.environ['CUDA_VISIBLE_DEVICES'] = "2"
-
-'''
-run like python refactor_unfolding.py Rapgap nominal  0
-[command] [Rapgap or Django] [run_type: nominal, sys_0...] [BOOTSTRAPPING Seed]
-'''
-print("Running on MC sample", sys.argv[1], "with setting", sys.argv[2])
-
-if (sys.argv[1] == "Django" and sys.argv[2] == 'closure'):
-    sys.exit("closure test must be run with Rapgap as MC")
-
-
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 print("GPUs = ", physical_devices)
 
-# mc = "Rapgap"
-# mc = "Django"
-mc = sys.argv[1]
-LABEL = f"{mc}_SingleWorker_Q2_Cut"
-# LABEL = f"{mc}_AddKinematics"
-# LABEL = f"{mc}_BootStrap_Nov20"
-ID = f"{sys.argv[1]}_{sys.argv[2]}_{LABEL}"
+
+if len(sys.argv) > 1:
+    CONFIG_FILE = sys.argv[1]
+else:
+    CONFIG_FILE = "./configs/config.yaml"
+
+config = yaml.safe_load(open(CONFIG_FILE))
+print(f"\nLoaded {CONFIG_FILE}\n")
+
+processed_dir = config['main_dir']
+model_folder = config['model_dir']
+inputs_dir = config['data_dir']
+
+mc_type = config['mc']  # Rapgap, Django, Pythia
+run_type = config['run_type']  # nominal, bootstrap, systematic
+LABEL = config['identifier']
+ID = f"{mc_type}_{run_type}_{LABEL}"
+
+print(f"Running on MC sample {mc_type} with setting, {run_type}")
 print(f"\n\n ID = {ID} \n\n")
 
 save_dir = "../h1_models"
@@ -49,45 +51,50 @@ except OSError as error:
 
 
 # tf.random.set_seed(int(sys.argv[3]))
-np_seed = int(float(sys.argv[3]))
-np.random.seed(np_seed)
+np_seed = 0
+if len(sys.argv) > 2:
+    np_seed = int(float(sys.argv[2]))
+    np.random.seed(np_seed)
 
-add_asymmetry = False
+
+add_asymmetry = config['asymm_vars']
 leading_jets_only = True
 num_observables = 8
 
 NEVENTS = -1
-n_epochs = 1000
-NIter = 5
-NPasses = 5
+n_epochs = config['n_epochs']
+NIter = config['n_iterations']
+NPasses = config['n_passes']
 
-test = False
-if test:
+if config['is_test']:
     LABEL = LABEL+"_TEST"
-    NEVENTS = -1
+    NEVENTS = 100_000  # usually not enough for results
     n_epochs = 10
     NIter = 5
     NPasses = 1
 
 
-# inputs_dir = "/pscratch/sd/f/fernando/h1_data"
-inputs_dir = "/clusterfs/ml4hep/yxu2/unfolding_mc_inputs"
+if run_type == 'closure':
 
-if sys.argv[2] == 'closure':
-    data = pd.read_pickle(f"{inputs_dir}/Django_nominal.pkl")
-    mc = pd.read_pickle(f"{inputs_dir}/{sys.argv[1]}_nominal.pkl")
-    #see if remainder is larger than batch_size
+    if mc_type != "Rapgap":
+        sys.exit("closure test must be run with Rapgap as MC")
+
+    data = pd.read_pickle(f"{inputs_dir}/Django_nominal.pkl")[:NEVENTS]
+    mc = pd.read_pickle(f"{inputs_dir}/{mc_type}_nominal.pkl")[:NEVENTS]
+
+    print(f"MC = {inputs_dir}/{mc_type}_nominal.pkl",
+          "shape =", np.shape(mc))
+    print(f"Data [Closure] = {inputs_dir}/Django_nominal.pkl",
+          "shape = ", np.shape(data))
 
 else:
-    mc = pd.read_pickle(f"{inputs_dir}/{sys.argv[1]}_{sys.argv[2]}.pkl")[:NEVENTS]
     data = pd.read_pickle(f"{inputs_dir}/Data_nominal.pkl")[:NEVENTS]
+    mc = pd.read_pickle(f"{inputs_dir}/{mc_type}_{run_type}.pkl")[:NEVENTS]
 
-
-# Check MC and Data
-print(f"MC = {inputs_dir}/{sys.argv[1]}_{sys.argv[2]}.pkl")
-print(f"Data = {inputs_dir}/Data_nominal.pkl")
-print(np.shape(mc))
-print(np.shape(data))
+    print(f"MC = {inputs_dir}/{mc_type}_nominal.pkl",
+          "shape =", np.shape(mc))
+    print(f"Data = {inputs_dir}/Data_nominal.pkl",
+          "shape = ", np.shape(data))
 
 
 # Cut subleading Jets
