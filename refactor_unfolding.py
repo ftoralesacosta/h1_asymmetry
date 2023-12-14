@@ -17,7 +17,7 @@ from unfold import multifold
 from unfold import MASK_VAL
 print("MASK_VAL = ", MASK_VAL)
 
-os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+os.environ['CUDA_VISIBLE_DEVICES'] = "3"
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 print("GPUs = ", physical_devices)
@@ -71,7 +71,7 @@ NPasses = config['n_passes']
 if config['is_test']:
     NEVENTS = 100_000  # usually not enough for results
     n_epochs = 10
-    NIter = 5
+    NIter = 3
     NPasses = 1
 
 
@@ -199,12 +199,6 @@ if add_asymmetry:
         print(f"theta0_G Variable (Truth) {ivar} = ",
               theta0_G[pass_truth == 1][:5, ivar])
 
-#  sys.exit("\n\nEXITING\n\n")
-
-# DATA CLEANING
-# Mask value = -10
-
-
 
 #FIXME: MAKE SURE KINEMATICS WON'T NATURALLY BE MASK VALUE
 # It's almost impossible for a value to be exactly the MASK_val
@@ -240,6 +234,10 @@ del mc
 gc.collect()
 
 
+ID_file = ID  # for bootstrap ID
+if np_seed != 0:
+    ID_file += f"{np_seed}"
+
 for p in range(NPasses):
 
     start = time.time()
@@ -252,10 +250,10 @@ for p in range(NPasses):
 
     tf.keras.backend.clear_session()
 
-    np.save(f"{save_dir}/{ID}/{ID}_Pass{p}_Step2_Weights.npy", weights[:, 1:2, :])
-    np.save(f"{save_dir}/{ID}/{ID}_Pass{p}_Step2_History.npy", weights[:, 1:2, :])
+    np.save(f"{save_dir}/{ID}/{ID_file}_Pass{p}_Step2_Weights.npy", weights[:, 1:2, :])
+    np.save(f"{save_dir}/{ID}/{ID_file}_Pass{p}_Step2_History.npy", weights[:, 1:2, :])
 
-    np.save(f"{save_dir}/{ID}/{ID}_Pass{p}_Step1_Weights.npy", weights[:, 0:1, :])
-    np.save(f"{save_dir}/{ID}/{ID}_Pass{p}_Step1_History.npy", weights[:, 0:1, :])
+    np.save(f"{save_dir}/{ID}/{ID_file}_Pass{p}_Step1_Weights.npy", weights[:, 0:1, :])
+    np.save(f"{save_dir}/{ID}/{ID_file}_Pass{p}_Step1_History.npy", weights[:, 0:1, :])
 
     print(f"Pass {p} took {time.time() - start} seconds \n")
