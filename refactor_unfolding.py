@@ -5,6 +5,7 @@ import pandas as pd
 import gc
 import time
 import os
+import yaml
 
 import tensorflow as tf
 import tensorflow.keras
@@ -19,7 +20,8 @@ print("MASK_VAL = ", MASK_VAL)
 
 os.environ['CUDA_VISIBLE_DEVICES'] = "3"
 physical_devices = tf.config.list_physical_devices('GPU')
-tf.config.experimental.set_memory_growth(physical_devices[0], True)
+for gpu in physical_devices:
+     tf.config.experimental.set_memory_growth(gpu, True)
 print("GPUs = ", physical_devices)
 
 
@@ -52,7 +54,10 @@ try:
 except OSError as error:
     print(error)
 
+# Copy the config used to the output dir
+os.system(f"cp {CONFIG_FILE} {save_dir}/{ID}")
 
+# BOOTSTRPPING SEED
 np_seed = 0
 if len(sys.argv) > 2:
     np_seed = int(float(sys.argv[2]))
@@ -172,7 +177,7 @@ print("NaN in Theta0_G (Truth)= ", np.isnan(theta0_G[pass_truth==1]).any())
 # Add directly the asymmetry angle to the unfolding.
 if add_asymmetry:
 
-    num_observables = 11
+    num_observables = 12
 
     asymm_kinematics = np.asarray(get_kinematics(theta_unknown_S)).T[:, :-1]
     theta_unknown_S = np.append(theta_unknown_S, asymm_kinematics, 1)
@@ -185,17 +190,17 @@ if add_asymmetry:
 
     print(f"\n\n SHAPE OF theta0_S {np.shape(theta0_S)} \n\n")
 
-    for ivar in range(11):
+    for ivar in range(num_observables):
         print(f"theta0_S Variable {ivar} = ",
               theta0_S[pass_reco == 1][:5, ivar])
     print()
 
-    for ivar in range(11):
+    for ivar in range(num_observables):
         print(f"theta0_S Variable (Truth) {ivar} = ",
               theta0_S[pass_truth == 1][:5, ivar])
     print()
 
-    for ivar in range(11):
+    for ivar in range(num_observables):
         print(f"theta0_G Variable (Truth) {ivar} = ",
               theta0_G[pass_truth == 1][:5, ivar])
 

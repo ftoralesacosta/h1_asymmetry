@@ -1,0 +1,16 @@
+main_dir          : /pscratch/sd/f/fernando/h1_asymmetry
+model_dir         : /pscratch/sd/f/fernando/h1_models
+data_dir          : /pscratch/sd/f/fernando/h1_data
+
+mc                : Rapgap
+run_type          : nominal
+identifier        : Perlmutter_TEST
+
+is_test           : True
+asymm_vars        : False
+n_epochs          : 1000
+n_iterations      : 5
+n_passes          : 5
+
+q_bins            : [ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  8., 10.]
+

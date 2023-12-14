@@ -1,0 +1,14 @@
+main_dir          : /global/ml4hep/spss/ftoralesacosta/h1_asymmetry
+model_dir         : /global/ml4hep/spss/ftoralesacosta/h1_models
+data_dir          : /clusterfs/ml4hep/yxu2/unfolding_mc_inputs
+
+mc                : Rapgap
+run_type          : nominal
+identifier        : TEST
+
+is_test           : True
+n_epochs          : 1000
+n_iterations      : 10
+n_passes          : 5
+
+q_bins            : [ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  8., 10.]
