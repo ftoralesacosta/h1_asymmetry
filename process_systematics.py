@@ -213,7 +213,7 @@ def sum_in_quadruture(sys_dict):
     return
 
 
-def plot_variations(sys_dict, color_dict, plot_label):
+def plot_variations(sys_dict, color_dict, plot_labels):
     fig, axes = plt.subplots(1, 3, figsize=(22, 7))
 
     for i, kin in enumerate(["cos1", "cos2", "cos3"]):
@@ -222,7 +222,7 @@ def plot_variations(sys_dict, color_dict, plot_label):
 
             # print(sys_dict[syst]['q_perp'])
             axes[i].errorbar(sys_dict[syst]["q_perp"], sys_dict[syst][kin],
-                             label=plot_label[syst], color=color_dict[syst], linewidth=3)
+                             label=plot_labels[syst], color=color_dict[syst], linewidth=3)
 
             string = r"$\cos(%i\phi)$" % (i+1)
             string = string.replace("1", "")
@@ -237,7 +237,7 @@ def plot_variations(sys_dict, color_dict, plot_label):
     return
 
 
-def plot_uncertanties(uncertainties, color_dict):
+def plot_uncertanties(uncertainties, color_dict, plot_labels):
 
     # keys = ["q_perp", "cos1", "cos2", "cos3"]
     fig,axes = plt.subplots(1,3,figsize=(22,7))
@@ -266,7 +266,7 @@ def plot_uncertanties(uncertainties, color_dict):
             print(syst, uncertainties[syst]['q_perp'])
             axes[i].errorbar(uncertainties['nominal']["q_perp"],
                              uncertainties[syst][kin],
-                             label=syst,
+                             label=plot_labels[syst],
                              color=color_dict[syst], linewidth=3)
 
         # if (plot_bootstrap):
@@ -285,20 +285,23 @@ def plot_uncertanties(uncertainties, color_dict):
     axes[0].text(0.04, 0.92, "H1 Preliminary", transform=axes[0].transAxes, fontsize=22) 
 
     plt.tight_layout()
-    plt.legend(fontsize=20)
+    plt.legend(fontsize=18)
     plt.savefig("./plots/systematics/absError_systematics_unfolded_separately.pdf")
 
     return
 
 
 # Define Dictionary for labels in plotting. Maps code to Systematic
-plot_label = {}
-plot_label['sys_0'] = 'HFS scale (in jet)'
-plot_label['sys_1'] = 'HFS scale (remainder)'
-plot_label['sys_5'] = 'HFS $\phi$ angle'
-plot_label['sys_7'] = 'Lepton energy scale'
-plot_label['sys_11'] = 'Lepton $\phi$ angle'
-plot_label['QED']  = 'QED rad corr.'
+plot_labels = {}
+plot_labels['nominal'] = 'Nominal'
+plot_labels['model'] = 'Model (Prior)'
+plot_labels['sys_0'] = 'HFS scale (in jet)'
+plot_labels['sys_1'] = 'HFS scale (remainder)'
+plot_labels['sys_5'] = 'HFS $\phi$ angle'
+plot_labels['sys_7'] = 'Lepton energy scale'
+plot_labels['sys_11'] = 'Lepton $\phi$ angle'
+plot_labels['QED']  = 'QED rad corr.'
+plot_labels['total']  = 'Total Systematic'
 
 keys = ['nominal', 'model', 'QED', 'sys_0', 'sys_1', 'sys_5', 'sys_7', 'sys_11']
 
@@ -338,7 +341,7 @@ if reprocess_QED_npy:
 
 
 # Save dictionary ingredients
-do_sys_calc = True
+do_sys_calc = False
 nested_sys_dict = get_sys_dictionaries(keys, suffix, do_sys_calc)
 
 do_qed_calc = False
@@ -351,5 +354,5 @@ sum_in_quadruture(uncertainties)  # appends 'total' to dict
 pickle_dict(uncertainties, 'uncertainties.pkl', folder='./pkls')
 
 
-plot_variations(nested_sys_dict, color_dict, plot_label)
-plot_uncertanties(uncertainties, color_dict, plot_label)
+plot_variations(nested_sys_dict, color_dict, plot_labels)
+plot_uncertanties(uncertainties, color_dict, plot_labels)
