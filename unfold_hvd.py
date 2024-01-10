@@ -30,12 +30,12 @@ def weighted_binary_crossentropy(y_true, y_pred):
 class MultiFold():
     def __init__(self,
                  num_observables, iterations,
-                 theta0_G, 
-                 theta0_S, 
+                 theta0_G, theta0_S, 
                  theta_unknown_S,
                  n_epochs=1000,
                  weights_MC_sim=None, 
-                 weights_MC_data=None):
+                 weights_MC_data=None,
+                 verbose=1):
 
         self.num_observables = num_observables 
         self.iterations = iterations 
@@ -45,6 +45,7 @@ class MultiFold():
         self.n_epochs = n_epochs
         self.weights_MC_sim = weights_MC_sim
         self.weights_MC_data = weights_MC_data
+        self.verbose = verbose
 
         print("\nIN MULTIFOLD CLASS INIT")
         print( "NaN in Theta0_S =        ", np.nan in theta0_S )
@@ -96,8 +97,8 @@ class MultiFold():
         hidden_layer_2 = Dense(100, activation='relu')(dropoutlayer)
         hidden_layer_3 = Dense(50, activation='relu')(hidden_layer_2)
         outputs = Dense(1, activation='sigmoid')(hidden_layer_3)
-        model1 = Model(inputs=inputs, outputs=outputs)
-        model2 = Model(inputs=inputs, outputs=outputs)
+        model = Model(inputs=inputs, outputs=outputs)
+        # model2 = Model(inputs=inputs, outputs=outputs)
 
         # Two separate models ensures less bias
 
@@ -123,14 +124,14 @@ class MultiFold():
         optimizer = hvd.DistributedOptimizer(optimizer)
 
 
-        model1.compile(loss=weighted_binary_crossentropy,
+        model.compile(loss=weighted_binary_crossentropy,
                        optimizer=tf.keras.optimizers.Adam(learning_rate=2e-6),
                        metrics=['accuracy'])
 
-        model2.compile(loss=weighted_binary_crossentropy,
-                       optimizer=tf.keras.optimizers.Adam(learning_rate=2e-6),
-                       metrics=['accuracy'])
-        # Not using 2-model thing for now
+        # model.compile(loss=weighted_binary_crossentropy,
+        #                optimizer=tf.keras.optimizers.Adam(learning_rate=2e-6),
+        #                metrics=['accuracy'])
+        # # Not using 2-model thing for now
 
 
         for i in range(self.iterations):
@@ -164,40 +165,40 @@ class MultiFold():
                 print("weights_1 mean = ", np.mean(weights_1))
                 print("w_train_1 mean = ", np.mean(w_train_1))
                 print("Y_train_1 mean = ", np.mean(Y_train_1))
-                print("="*20, "Running model1.fit", "="*20)
+                print("="*20, "Running model step 1 fit", "="*20)
 
 
             batch_size = 2000
 
-            verbose = 2 if hvd.rank()==0 else 0
+            self.verbose = 2 if hvd.rank()==0 else 0
 
             callbacks = [
                 hvd.callbacks.BroadcastGlobalVariablesCallback(0), 
                 #check if the early stopping is avg of all or just 1 gpu
                 hvd.callbacks.MetricAverageCallback(),
-                ReduceLROnPlateau(patience=10, min_lr=1e-7,verbose=verbose), #cos schedule might cool
+                ReduceLROnPlateau(patience=10, min_lr=1e-7,verbose=self.verbose), #cos schedule might cool
                 EarlyStopping(patience=20, restore_best_weights=True)]
 
-            hist_s1 = model1.fit(X_train_1[X_train_1[:, 0] != MASK_VAL],
+            hist_s1 = model.fit(X_train_1[X_train_1[:, 0] != MASK_VAL],
                                  Y_train_1[X_train_1[:, 0] != MASK_VAL],
                                  epochs=self.n_epochs,
                                  batch_size=batch_size,
                                  validation_data=(X_test_1[X_test_1[:, 0] != MASK_VAL],
                                                   Y_test_1[X_test_1[:, 0] != MASK_VAL]),
                                  callbacks=callbacks,
-                                 verbose=verbose)
+                                 verbose=self.verbose)
 
 
             print("\n\nSTEP 1 REWEIGHT")
             weights_pull = weights_push * \
-                self.reweight(self.theta0_S, model1, verbose)
+                self.reweight(self.theta0_S, model, self.verbose)
 
             weights_pull[self.theta0_S[:, 0] == MASK_VAL] = 1
 
             if hvd.rank() == 0:
                 history['step1'].append(hist_s1)
                 weights[i, :1, :] = weights_pull
-                models[i, 1] = model1.get_weights()
+                models[i, 1] = model.get_weights()
 
             print("STEP 2...")
             weights_2 = np.concatenate((self.weights_MC_sim, weights_pull))
@@ -225,30 +226,30 @@ class MultiFold():
                 print("weights_2 mean = ", np.mean(weights_2))
                 print("w_train_2 mean = ", np.mean(w_train_2))
                 print("Y_train_2 mean = ", np.mean(Y_train_2))
-                print("="*20, "Running model2.fit", "="*20)
+                print("="*20, "Running model step2 fit", "="*20)
 
 
-            hist_s2 = model2.fit(X_train_2[X_train_2[:, 0] != MASK_VAL],
+            hist_s2 = model.fit(X_train_2[X_train_2[:, 0] != MASK_VAL],
                                  Y_train_2[X_train_2[:, 0] != MASK_VAL],
                                  epochs=self.n_epochs,
                                  batch_size=batch_size,
                                  validation_data=(X_test_2[X_test_2[:, 0] != MASK_VAL],
                                                   Y_test_2[X_test_2[:, 0] != MASK_VAL]),
                                  callbacks=callbacks,
-                                 verbose=verbose)
+                                 verbose=self.verbose)
 
             #steps per epoch
             # steps_per = nevents / (ngpus * batch_size)
 
             print("\n\nSTEP 2 REWEIGHT")
             weights_push = self.weights_MC_sim * \
-                self.reweight(self.theta0_G, model2, verbose)
+                self.reweight(self.theta0_G, model, self.verbose)
             #all gpus see the same model. The Data is split.
 
             if hvd.rank() == 0:
                 print(f"Weights for Iteration {i} =", weights[i, 1:2, :])
 
-            models[i, 2] = model2.get_weights() #same model on ALL GPUS. HOROVOD FTW! 
+            models[i, 2] = model.get_weights() #same model on ALL GPUS. HOROVOD FTW! 
             weights[i, 1:2, :] = weights_push #plot and use. Take a look at weights_push normalization
             # V keeps normalization the same, ensuring the cross section doesn't change. 
             # want it to be the same as the sum of mc_weights.
