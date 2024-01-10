@@ -237,6 +237,9 @@ print("="*50)
 del mc
 gc.collect()
 
+ID_file = ID  # for bootstrap ID
+if np_seed != 0:
+    ID_file += f"{np_seed}"
 
 ID_file = ID  # for bootstrap ID
 if np_seed != 0:

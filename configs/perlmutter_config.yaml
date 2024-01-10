@@ -3,8 +3,8 @@ model_dir         : /pscratch/sd/f/fernando/h1_models
 data_dir          : /pscratch/sd/f/fernando/h1_data
 
 mc                : Rapgap
-run_type          : closure
-identifier        : Perlmutter_Interactive
+run_type          : nominal
+identifier        : Perlmutter_Bootstrap
 
 is_test           : False
 asymm_vars        : False
