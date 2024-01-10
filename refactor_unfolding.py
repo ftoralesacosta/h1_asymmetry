@@ -9,7 +9,6 @@ import yaml
 
 import tensorflow as tf
 import tensorflow.keras
-import yaml
 
 from get_np_arrays import get_kinematics
 
@@ -18,10 +17,10 @@ from unfold import multifold
 from unfold import MASK_VAL
 print("MASK_VAL = ", MASK_VAL)
 
-os.environ['CUDA_VISIBLE_DEVICES'] = "3"
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 physical_devices = tf.config.list_physical_devices('GPU')
 for gpu in physical_devices:
-     tf.config.experimental.set_memory_growth(gpu, True)
+    tf.config.experimental.set_memory_growth(gpu, True)
 print("GPUs = ", physical_devices)
 
 
@@ -36,9 +35,9 @@ print(f"\nLoaded {CONFIG_FILE}\n")
 processed_dir = config['main_dir']
 model_folder = config['model_dir']
 inputs_dir = config['data_dir']
-
 mc_type = config['mc']  # Rapgap, Django, Pythia
 run_type = config['run_type']  # nominal, bootstrap, systematic
+
 LABEL = config['identifier']
 ID = f"{mc_type}_{run_type}_{LABEL}"
 
