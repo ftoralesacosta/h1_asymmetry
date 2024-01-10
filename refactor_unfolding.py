@@ -18,7 +18,7 @@ from unfold import multifold
 from unfold import MASK_VAL
 print("MASK_VAL = ", MASK_VAL)
 
-# os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 physical_devices = tf.config.list_physical_devices('GPU')
 for gpu in physical_devices:
      tf.config.experimental.set_memory_growth(gpu, True)
@@ -76,7 +76,7 @@ NPasses = config['n_passes']
 if config['is_test']:
     NEVENTS = 100_000  # usually not enough for results
     n_epochs = 10
-    NIter = 5
+    NIter = 3
     NPasses = 1
 
 
@@ -237,6 +237,10 @@ print("="*50)
 
 del mc
 gc.collect()
+
+ID_file = ID  # for bootstrap ID
+if np_seed != 0:
+    ID_file += f"{np_seed}"
 
 ID_file = ID  # for bootstrap ID
 if np_seed != 0:
