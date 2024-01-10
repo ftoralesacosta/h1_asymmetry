@@ -92,13 +92,13 @@ if config['is_test']:
     NIter = 5
     NPasses = 1
 
-theta0_G = np.load(f"npy_inputs/Rapgap_nominal_Perlmutter_Bootstrap_Theta0_G.npy")[hvd.rank():NEVENTS:hvd.size()]
-theta0_S = np.load(f"npy_inputs/Rapgap_nominal_Perlmutter_Bootstrap_Theta0_S.npy")[hvd.rank():NEVENTS:hvd.size()]
-theta_unknown_S = np.load(f"npy_inputs/Rapgap_nominal_Perlmutter_Bootstrap_theta_unknown_S.npy")[hvd.rank():NEVENTS:hvd.size()]
+# theta0_G = np.load(f"./npy_inputs/Rapgap_nominal_Perlmutter_Bootstrap_Theta0_G.npy")[hvd.rank():NEVENTS:hvd.size()]
+# theta0_S = np.load(f"./npy_inputs/Rapgap_nominal_Perlmutter_Bootstrap_Theta0_S.npy")[hvd.rank():NEVENTS:hvd.size()]
+# theta_unknown_S = np.load(f"./npy_inputs/Rapgap_nominal_Perlmutter_Bootstrap_theta_unknown_S.npy")[hvd.rank():NEVENTS:hvd.size()]
 
-# theta0_G = np.load(f"npy_inputs/{ID}_Theta0_G.npy")[hvd.rank():NEVENTS:hvd.size()]
-# theta0_S = np.load(f"npy_inputs/{ID}_Theta0_S.npy")[hvd.rank():NEVENTS:hvd.size()]
-# theta_unknown_S = np.load(f"npy_inputs/{ID}_theta_unknown_S.npy")[hvd.rank():NEVENTS:hvd.size()]
+theta0_G = np.load(f"npy_inputs/{ID}_Theta0_G.npy")[hvd.rank():NEVENTS:hvd.size()]
+theta0_S = np.load(f"npy_inputs/{ID}_Theta0_S.npy")[hvd.rank():NEVENTS:hvd.size()]
+theta_unknown_S = np.load(f"npy_inputs/{ID}_theta_unknown_S.npy")[hvd.rank():NEVENTS:hvd.size()]
 
 # Set Initial Data Weights for BOOTSTRAPPING
 dataw = None
