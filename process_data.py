@@ -3,25 +3,22 @@ import numpy as np
 import pandas as pd
 # import matplotlib.pyplot as plt
 import gc
-import time
 import os
 import yaml
 
 import tensorflow as tf
 import tensorflow.keras
-import yaml
 
 from get_np_arrays import get_kinematics
 
-from unfold import multifold
-
 from unfold import MASK_VAL
+
 print("MASK_VAL = ", MASK_VAL)
 
 # os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 physical_devices = tf.config.list_physical_devices('GPU')
 for gpu in physical_devices:
-     tf.config.experimental.set_memory_growth(gpu, True)
+    tf.config.experimental.set_memory_growth(gpu, True)
 print("GPUs = ", physical_devices)
 
 
@@ -150,6 +147,7 @@ if (np_seed != 0):
 else:
     print("Not doing bootstrapping")
 
+
 # Option for unfolding on more vars
 for ivar in range(num_observables):
     print(f"theta0_S Variable {reco_vars[ivar]} = ",
@@ -169,10 +167,10 @@ for ivar in range(num_observables):
           theta0_G[pass_truth == 1][:5, ivar])
 
 print("NaN in Data = ", np.isnan(theta_unknown_S).any())
-print("NaN in Theta0_S (RECO) = ", np.isnan(theta0_S[pass_reco==1]).any())
-#print("NaN in Theta0_S(Truth)(NOT USED)= ",\
-#np.isnan(theta0_S[pass_truth==1]).any())
-print("NaN in Theta0_G (Truth)= ", np.isnan(theta0_G[pass_truth==1]).any())
+print("NaN in Theta0_S (RECO) = ", np.isnan(theta0_S[pass_reco == 1]).any())
+# print("NaN in Theta0_S(Truth)(NOT USED)= ",\
+# np.isnan(theta0_S[pass_truth==1]).any())
+print("NaN in Theta0_G (Truth)= ", np.isnan(theta0_G[pass_truth == 1]).any())
 
 # Add directly the asymmetry angle to the unfolding.
 if add_asymmetry:
@@ -205,7 +203,7 @@ if add_asymmetry:
               theta0_G[pass_truth == 1][:5, ivar])
 
 
-#FIXME: MAKE SURE KINEMATICS WON'T NATURALLY BE MASK VALUE
+# FIXME: MAKE SURE KINEMATICS WON'T NATURALLY BE MASK VALUE
 # It's almost impossible for a value to be exactly the MASK_val
 
 theta0_S[:, 0][pass_reco == 0] = MASK_VAL
@@ -219,16 +217,16 @@ theta0_S[theta0_S == np.inf] = MASK_VAL
 theta0_G[theta0_G == np.inf] = MASK_VAL
 theta_unknown_S[theta_unknown_S == np.inf] = MASK_VAL
 
-np.nan_to_num(theta0_S, copy=False, nan =MASK_VAL)
-np.nan_to_num(theta0_G, copy=False, nan =MASK_VAL)
-np.nan_to_num(theta_unknown_S, copy=False, nan =MASK_VAL)
+np.nan_to_num(theta0_S, copy=False, nan=MASK_VAL)
+np.nan_to_num(theta0_G, copy=False, nan=MASK_VAL)
+np.nan_to_num(theta_unknown_S, copy=False, nan=MASK_VAL)
 
 
 print("="*50)
 print("L: 187")
-print("NaN in Theta0_S = ", np.isnan(theta0_S).any() )
-print("NaN in Theta0_G = ", np.isnan(theta0_G).any() )
-print("NaN in Data = ", np.isnan(theta_unknown_S).any() )
+print("NaN in Theta0_S = ", np.isnan(theta0_S).any())
+print("NaN in Theta0_G = ", np.isnan(theta0_G).any())
+print("NaN in Data = ", np.isnan(theta_unknown_S).any())
 print("-"*50)
 print("INF in Theta0_S = ", np.inf in theta0_S)
 print("INF in Theta0_G = ", np.inf in theta0_G)
@@ -239,6 +237,12 @@ print("="*50)
 np.save(f"npy_inputs/{ID}_Theta0_S.npy", theta0_S)
 np.save(f"npy_inputs/{ID}_Theta0_G.npy", theta0_G)
 np.save(f"npy_inputs/{ID}_theta_unknown_S.npy", theta_unknown_S)
+
+np.save(f"npy_inputs/{ID}_pass_reco.npy", pass_reco)
+np.save(f"npy_inputs/{ID}_pass_truth.npy", pass_truth)
+np.save(f"npy_inputs/{ID}_pass_fiducial.npy", pass_truth)
+np.save(f"npy_inputs/{ID}_weights_mc_sim.npy", weights_MC_sim)
+np.save(f"npy_inputs/{ID}_genQ2.npy", gen_Q2)
 
 del mc
 gc.collect()
