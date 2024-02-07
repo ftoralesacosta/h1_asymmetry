@@ -32,17 +32,18 @@ ID = f"{mc}_{run_type}_{LABEL}"
 if config['is_test']:
     ID = ID + "_TEST"  # avoid overwrites of nominal
 
-n_iter = config['n_iterations']
-n_passes = config['n_passes']
+N_iter = config['n_iterations']
+N_passes = config['n_passes']
 
 # Need to save each pass, and it would be nice to save pass_avgs :]
 
 
 # ========================================
 # Tensorflow Init
-physical_devices = tf.config.list_physical_devices('GPU')
-tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
+gpus = tf.config.experimental.list_physical_devices('GPU')
+for gpu in gpus:
+    tf.config.experimental.set_memory_growth(gpu, True)
 
 # ======= Load the thetaG and unknownS ======
 theta0_G = np.load(f"npy_inputs/{ID}_Theta0_G.npy")
@@ -56,8 +57,9 @@ print("Loaded weights MC\n")
 
 # ======= Load the Model ======
 ID_File = ID # FIXME will add be np.arrange(n_bootstraps)
-n_passes = 1
 num_observables = 8
+if config['asymm_vars']:
+    num_observables = 12
 
 inputs = Input((num_observables, ))
 hidden_layer_1 = Dense(50, activation='relu')(inputs)
@@ -72,60 +74,31 @@ model.compile(loss=weighted_binary_crossentropy,
               optimizer=tf.keras.optimizers.Adam(learning_rate=2e-6),
               metrics=['accuracy'])
 
-for p in tqdm(range(n_passes)):
+pass_avgs = np.zeros( (N_iter, len(theta0_G[:,0])) )
 
-    Model_Name = f'{model_dir}/{ID}/{ID_File}_Pass{p}/iter_4_step2_checkpoint'
-    print(f"\n\nLoading Model {Model_Name}")
-    model.load_weights(Model_Name)
+for p in tqdm(range(N_passes)):
 
-    # model = tf.keras.models.load_model(Model_Name)
-    print(f"Success!")
+    for i in range(N_iter):
 
-    weights_push = weights_MC_sim * reweight(theta0_G, model, verbose = 1)
-    print(f"Mean Weight = {np.mean(weights_push)}")
-    print(f"STDV Weight = {np.std(weights_push)} ")
-    print(f"Weights in iteration {i}:")
-    print(weights_push)
+        model_name = f'{model_dir}/{ID}/{ID_File}_Pass{p}/iter_{i}_step2_checkpoint'
+        print(f"\n\nLoading Model {model_name}")
+        model.load_weights(model_name)
 
-# FIXME: Bootstrapping needs the npy random seed in ID_FILE. Its in the filename
-# model_name = f'{model_dir}/{ID}/{ID_File}/iter_{i}_step2_checkpoint'
+        # model = tf.keras.models.load_model(Model_Name)
+        print(f"Success!")
 
+        weights_push = weights_MC_sim * reweight(theta0_G, model, verbose = 1)
+        print(f"Mean Weight = {np.mean(weights_push)}")
+        print(f"STDV Weight = {np.std(weights_push)} ")
+        # print("Shape of NN Weights = ",np.shape(weights_push))
+        # print(f"Weights in Pass {p}:")
+        # print(weights_push)
 
-# ============================================
-# ================== OLD =====================
-# ============================================
+        # file = f"./weights/{LABEL}_Pass{p}_Step2_Weights.npy"
+        # np.save(file, weights_push)
+        pass_avgs[i] += weights_push
 
-#scaler_data = StandardScaler()
-#scaler_data.fit(theta_unknown_S)
-#print("\n Length of theta0G =",len(theta0_G),"\n")
-## run_iter = 4
-#bootstrap_weights = []
-#for seed in tqdm(np.concatenate([range(1,30),range(34,45),[46,47,48,49],range(54,66),range(80,86),range(100,106),range(120,126)])):
+    pass_avgs[i] = pass_avgs[i]/N_passes
 
-#    #Make sure to reset weights
-#    NNweights_step2 = np.ones(len(theta0_G))
-#    NNweights_step2_hold = np.ones(len(theta0_G))
-
-#    for run_iter in range(5):
-#        print(
-#            "Loading /clusterfs/ml4hep/yxu2/inputfiles/fullscan_stat/models/Rapgap_nominal_iteration_"
-#                +str(run_iter)+"_"+str(seed)+"_step2")
-
-#        mymodel = tf.keras.models.load_model(
-#            "/clusterfs/ml4hep/yxu2/inputfiles/fullscan_stat/models/Rapgap_nominal_iteration"+str(run_iter)+"_"+str(seed)+"_step2", compile=False)
-
-#        NNweights_step2_hold = mymodel.predict(scaler_data.transform(theta0_G),batch_size=10000)
-#        NNweights_step2_hold = NNweights_step2_hold/(1.-NNweights_step2_hold)
-#        NNweights_step2_hold = NNweights_step2_hold[:,0]
-#        NNweights_step2_hold = np.squeeze(np.nan_to_num(NNweights_step2_hold,posinf=1))
-#        NNweights_step2_hold[pass_truth==0] = 1.
-#        NNweights_step2 = NNweights_step2_hold*NNweights_step2
-
-#        tf.keras.backend.clear_session()
-
-#    bootstrap_weights.append(NNweights_step2)
-
-#bootstrap_weights = np.asarray(bootstrap_weights)
-#np.save("bootstrap_rapgap_weights.npy",bootstrap_weights)
-
-
+np.save(f"./weights/{LABEL}_{ID}_pass_avgs.npy", pass_avgs)
+print("Weights saved to ./weights/")

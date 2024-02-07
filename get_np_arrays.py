@@ -6,12 +6,6 @@ import uproot as ur
 import yaml
 from unfold import MASK_VAL
 print("MASK VAL = ", MASK_VAL)
-# import time
-# import tensorflow as tf
-# from sklearn.preprocessing import StandardScaler
-# import h5py
-# from unfold import weighted_binary_crossentropy
-
 
 # 1 make sure q2 is obtained
 # 2 load nn weights from new npy files
@@ -222,14 +216,12 @@ def get_cuts(pass_fiducial, pass_truth, q_perp_mag, jet_pT_mag, asymm_phi, jet_q
     cut_arrays = [
         # Q2_cut,
         jet_pT_mag_nan,
-        # pass_truth,
+        pass_truth,
         pass_fiducial,
         pT_cut,
         q_over_pT_cut,
         qT_cut,
         phi_nan_cut]
-
-    cut_strings = ["Q2", "pt_mag_nan", "fiducial", "pT", "q/pT","qT","phi_nan"]
 
     cuts = np.ones(len(pT_cut))
 
@@ -237,7 +229,6 @@ def get_cuts(pass_fiducial, pass_truth, q_perp_mag, jet_pT_mag, asymm_phi, jet_q
     print("Checking Cut Sub Masks")
     i = 0
     for cut in cut_arrays:
-        print(cut_strings[i])
         i+=1
         print(cut)
         cuts = np.logical_and(cuts, cut)
@@ -254,7 +245,11 @@ def get_cuts(pass_fiducial, pass_truth, q_perp_mag, jet_pT_mag, asymm_phi, jet_q
     return cuts
 
 
-# ==================================
+# ==============================================================================================
+# ==============================================================================================
+# ==============================================================================================
+# ==============================================================================================
+# ==============================================================================================
 
 
 def npy_from_npy(label, save_dir, pass_avg=True, suffix="", load_NN=True,
@@ -281,7 +276,7 @@ def npy_from_npy(label, save_dir, pass_avg=True, suffix="", load_NN=True,
     print("shape of pass_fiducial  = ", np.shape(pass_fiducial))
 
     if pass_avg:
-        NN_step2_weights = np.load(f"./weights/{label}_pass_avgs.npy")[-1]
+        NN_step2_weights = np.load(f"./weights/{ID}_pass_avgs.npy")[-1]
         # Taking the last element grabs the last omnifold ITERATION
         # take the last iteration, MultiFold learns from SCRATCH
 
@@ -305,22 +300,25 @@ def npy_from_npy(label, save_dir, pass_avg=True, suffix="", load_NN=True,
     cut_Q2 = Q2 > 100.00
     print('Min Q2 after other cuts = ', np.min(Q2[cut_Q2]))
 
-    apply_Q2_cut = True
-    if (apply_Q2_cut):
-        Q2 = np.ones(len(q_perp_mag), dtype=bool)
-    else:
-        label += "NO_Q2_CUT_APPLIED"
+    # apply_Q2_cut = True
+    # if (apply_Q2_cut):
+    #     Q2 = np.ones(len(q_perp_mag), dtype=bool)
+    # else:
+    #     label += "NO_Q2_CUT_APPLIED"
 
     print("Cuts SHAPE = ", np.shape(cut_Q2))
-    weights = weights_MC_sim[cut_Q2]
-    print("SHAPE after Cuts = ", np.shape(weights))
+    print("WEIGTS SHAPE = ", np.shape(weights_MC_sim))
     print("NN_step2_Weights LEN = ", np.shape(NN_step2_weights))
-    weights *= NN_step2_weights
+
+    # weights = weights_MC_sim[cut_Q2]
+    # weights = weights_MC_sim
+    # print("SHAPE after Cuts = ", np.shape(weights))
+    weights = NN_step2_weights
 
     # TO DO: make sure to cut on MASK_VAL
 
     npy_dir = '/global/ml4hep/spss/ftoralesacosta/h1_asymmetry/npy_files/'
-    npy_dir = save_dir + 'npy_files/'
+    npy_dir = save_dir + '/npy_files'
     np.save(f'{npy_dir}/{label}_cuts.npy', cuts)
     np.save(f'{npy_dir}/{label}_jet_pT.npy', jet_pT_mag)
     np.save(f'{npy_dir}/{label}_q_perp.npy', q_perp_mag)
