@@ -7,7 +7,7 @@ import tensorflow.keras.backend as K
 from tensorflow.keras.layers import Dense, Input, Dropout
 from tensorflow.keras.models import Model
 from tensorflow.keras.utils import to_categorical
-from tensorflow.keras.callbacks import EarlyStopping,ModelCheckpoint, ReduceLROnPlateau
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 
 import horovod.tensorflow.keras as hvd 
 import horovod.tensorflow
@@ -27,11 +27,18 @@ def weighted_binary_crossentropy(y_true, y_pred):
     return K.mean(t_loss)
 
 
+def reweight(events, model, verbose):
+    f = model.predict(events, batch_size=2000, verbose=verbose)
+    print("\n\nWeights in reweight_function = ",f)
+    weights = f / (1. - f)
+    return np.squeeze(np.nan_to_num(weights))
+
 class MultiFold():
     def __init__(self,
                  num_observables, iterations,
                  theta0_G, theta0_S, 
                  theta_unknown_S,
+                 ID, ID_File, save_dir,
                  n_epochs=1000,
                  weights_MC_sim=None, 
                  weights_MC_data=None,
@@ -42,6 +49,9 @@ class MultiFold():
         self.theta0_G = theta0_G
         self.theta0_S = theta0_S 
         self.theta_unknown_S = theta_unknown_S
+        self.ID = ID
+        self.ID_File = ID_File
+        self.save_dir = save_dir
         self.n_epochs = n_epochs
         self.weights_MC_sim = weights_MC_sim
         self.weights_MC_data = weights_MC_data
@@ -60,11 +70,6 @@ class MultiFold():
         #       weights_MC_sim=None, weights_MC_data=None,
         #       verbose=1):
 
-    def reweight(self, events, model, verbose):
-        f = model.predict(events, batch_size=2000, verbose=verbose)
-        print("\n\nWeights in reweight_function = ",f)
-        weights = f / (1. - f)
-        return np.squeeze(np.nan_to_num(weights))
 
     def unfold(self):
 
@@ -176,22 +181,30 @@ class MultiFold():
                 hvd.callbacks.BroadcastGlobalVariablesCallback(0), 
                 #check if the early stopping is avg of all or just 1 gpu
                 hvd.callbacks.MetricAverageCallback(),
-                ReduceLROnPlateau(patience=10, min_lr=1e-7,verbose=self.verbose), #cos schedule might cool
-                EarlyStopping(patience=20, restore_best_weights=True)]
+                ReduceLROnPlateau(patience=5, min_lr=1e-7,verbose=self.verbose), #cos schedule might cool
+                # EarlyStopping(patience=20, restore_best_weights=True)]
+                EarlyStopping(
+                    monitor='val_loss', 
+                    min_delta=0.0005,
+                    patience=10,
+                    mode='auto',
+                    verbose=2,
+                    baseline=None)]
+
 
             hist_s1 = model.fit(X_train_1[X_train_1[:, 0] != MASK_VAL],
-                                 Y_train_1[X_train_1[:, 0] != MASK_VAL],
-                                 epochs=self.n_epochs,
-                                 batch_size=batch_size,
-                                 validation_data=(X_test_1[X_test_1[:, 0] != MASK_VAL],
-                                                  Y_test_1[X_test_1[:, 0] != MASK_VAL]),
-                                 callbacks=callbacks,
-                                 verbose=self.verbose)
+                                Y_train_1[X_train_1[:, 0] != MASK_VAL],
+                                epochs=self.n_epochs,
+                                batch_size=batch_size,
+                                validation_data=(X_test_1[X_test_1[:, 0] != MASK_VAL],
+                                                 Y_test_1[X_test_1[:, 0] != MASK_VAL]),
+                                callbacks=callbacks,
+                                verbose=self.verbose)
 
 
             print("\n\nSTEP 1 REWEIGHT")
             weights_pull = weights_push * \
-                self.reweight(self.theta0_S, model, self.verbose)
+                reweight(self.theta0_S, model, self.verbose)
 
             weights_pull[self.theta0_S[:, 0] == MASK_VAL] = 1
 
@@ -228,23 +241,29 @@ class MultiFold():
                 print("Y_train_2 mean = ", np.mean(Y_train_2))
                 print("="*20, "Running model step2 fit", "="*20)
 
+            if hvd.rank() == 0:
+                model_name = f'{self.save_dir}/{self.ID}/{self.ID_File}/iter_{i}_step2_checkpoint'
+                callbacks.append(ModelCheckpoint(model_name, monitor='val_loss', save_best_only=True,
+                                                 mode='auto',period=1,save_weights_only=True))
 
             hist_s2 = model.fit(X_train_2[X_train_2[:, 0] != MASK_VAL],
-                                 Y_train_2[X_train_2[:, 0] != MASK_VAL],
-                                 epochs=self.n_epochs,
-                                 batch_size=batch_size,
-                                 validation_data=(X_test_2[X_test_2[:, 0] != MASK_VAL],
-                                                  Y_test_2[X_test_2[:, 0] != MASK_VAL]),
-                                 callbacks=callbacks,
-                                 verbose=self.verbose)
+                                Y_train_2[X_train_2[:, 0] != MASK_VAL],
+                                epochs=self.n_epochs,
+                                batch_size=batch_size,
+                                validation_data=(X_test_2[X_test_2[:, 0] != MASK_VAL],
+                                                 Y_test_2[X_test_2[:, 0] != MASK_VAL]),
+                                callbacks=callbacks,
+                                verbose=self.verbose)
 
             #steps per epoch
             # steps_per = nevents / (ngpus * batch_size)
 
             print("\n\nSTEP 2 REWEIGHT")
             weights_push = self.weights_MC_sim * \
-                self.reweight(self.theta0_G, model, self.verbose)
+                reweight(self.theta0_G, model, self.verbose)
             #all gpus see the same model. The Data is split.
+            #important: Here we can see that we are applying MC Weights!
+            # no need to do this again later!
 
             if hvd.rank() == 0:
                 print(f"Weights for Iteration {i} =", weights[i, 1:2, :])

@@ -9,7 +9,7 @@ import tensorflow as tf
 import tensorflow.keras
 import horovod.tensorflow.keras as hvd
 
-from get_np_arrays import get_kinematics
+# from get_np_arrays import get_kinematics
 from unfold_hvd import MultiFold
 from unfold_hvd import MASK_VAL
 
@@ -17,10 +17,13 @@ from unfold_hvd import MASK_VAL
 hvd.init()
 
 gpus = tf.config.list_physical_devices('GPU')
+print(f"HVD: {hvd.rank()+1} / {hvd.size()}")
+print(f"local HVD (no +1): {hvd.local_rank()} / {hvd.size()}")
+print(f"gpus: ", gpus)
 for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
-    if gpus:
-        tf.config.experimental.set_visible_devices(gpus[hvd.local_rank()], 'GPU')
+    # if gpus:
+    #     tf.config.experimental.set_visible_devices(gpus[hvd.local_rank()], 'GPU')
 
 
 print("="*50)
@@ -54,6 +57,8 @@ ID = f"{mc_type}_{run_type}_{LABEL}"
 
 if config['is_test']:
     ID = ID + "_TEST"  # avoid overwrites of nominal
+
+ID_File = ID
 
 print(f"Running on MC sample {mc_type} with setting, {run_type}")
 print(f"\n\n ID = {ID} \n\n")
@@ -90,7 +95,7 @@ if config['is_test']:
     NEVENTS = 100_000  # usually not enough for results
     n_epochs = 4
     NIter = 5
-    NPasses = 1
+    NPasses = 2
 
 # theta0_G = np.load(f"./npy_inputs/Rapgap_nominal_Perlmutter_Bootstrap_Theta0_G.npy")[hvd.rank():NEVENTS:hvd.size()]
 # theta0_S = np.load(f"./npy_inputs/Rapgap_nominal_Perlmutter_Bootstrap_Theta0_S.npy")[hvd.rank():NEVENTS:hvd.size()]
@@ -106,9 +111,15 @@ if (np_seed != 0):
     dataw = np.random.poisson(1, len(theta_unknown_S))
     print("Doing Bootstrapping")
     print(f"10 Weights = {dataw[:10]}")
+    ID_File += str(np_seed)
 else:
     print("Not doing bootstrapping")
 
+
+# try:
+#     os.mkdir(f"{save_dir}/{ID}/{ID_File}/")
+# except OSError as error:
+#     print(error)
 
 
 print("="*50)
@@ -133,18 +144,21 @@ for p in range(NPasses):
 
     M_F = MultiFold(num_observables, NIter,
                     theta0_G, theta0_S,
-                    theta_unknown_S, n_epochs,
+                    theta_unknown_S, 
+                    ID, ID_File+f"_Pass{p}", 
+                    save_dir, n_epochs,
                     None, dataw)
 
     weights, models, history = M_F.unfold()
     tf.keras.backend.clear_session()
 
     # save step 2 first, more important :]
-    np.save(f"{save_dir}/{ID}/{ID}_Pass{p}_Step2_Weights.npy", weights[:, 1:2, :])
-    np.save(f"{save_dir}/{ID}/{ID}_Pass{p}_Step2_History.npy", weights[:, 1:2, :])
+    np.save(f"{save_dir}/{ID}/{ID_File}_Pass{p}_Step2_Weights.npy", weights[:, 1:2, :])
+    np.save(f"{save_dir}/{ID}/{ID_File}_Pass{p}_Step2_MODEL_W.npy", models)
+    np.save(f"{save_dir}/{ID}/{ID_File}_Pass{p}_Step2_History.npy", weights[:, 1:2, :])
 
-    np.save(f"{save_dir}/{ID}/{ID}_Pass{p}_Step1_Weights.npy", weights[:, 0:1, :])
-    np.save(f"{save_dir}/{ID}/{ID}_Pass{p}_Step1_History.npy", weights[:, 0:1, :])
+    np.save(f"{save_dir}/{ID}/{ID_File}_Pass{p}_Step1_Weights.npy", weights[:, 0:1, :])
+    np.save(f"{save_dir}/{ID}/{ID_File}_Pass{p}_Step1_History.npy", weights[:, 0:1, :])
 
     if hvd.rank() == 0:
         print(f"Pass {p} took {time.time() - start} seconds \n")
