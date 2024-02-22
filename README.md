@@ -11,11 +11,9 @@ To run the simple scripts, run:
         - This runs the unfolding, calling unfold.py
     3. `python inference_reweight.py [configs/config_file.yaml]`
         - This runs inference on the full dataset, reweights to produce step2 push weights,
-        and averages over passes
+        and averages over passes. Plots a lot.
     4. `python get_np_arrays.py [configs/config_file.yaml]`
         - This calculates the physics kinematic observables of interest
-    4. `python plot_weights.py [configs/config_file.yaml]'
-        - This plots averages and standard deviations of the weight distributions. Very important for 
         validation and debugging before looking at physics.
     5. `python make_gifs.py [configs/config_file.yaml]`
         - This generates several phi_asymm plots and cos[n*phi] plots, and generates a gif
@@ -23,3 +21,7 @@ To run the simple scripts, run:
 The Horovod versions are run similarly, but bullet 1. may need you to run with `horovodrun -p 8 python hvd_unfolding.py [configs/config_file.yaml] `
 
 
+When running an perlmutter, you will need to load two modules:
+
+`module load cpe/23.03`
+`module load tensorflow/2.6.0`
