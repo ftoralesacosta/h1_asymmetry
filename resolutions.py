@@ -11,11 +11,16 @@ from get_np_arrays import get_kinematics
 from get_np_arrays import get_cuts
 from unfold import MASK_VAL
 
+def ModPi(input_angle):
+    return np.arccos(np.cos(input_angle - np.pi))
+
+
+    
 def calculate_resolution(binning, reco, truth):
 
     #Goal: slices defined by bin of truth, filled with prediction distributions
     N = len(binning)+1
-    indecies = np.digitize(truth,binning)-1
+    indecies = np.digitize(truth,binning)
     max_count = ((np.bincount(indecies).max()))
     slices = np.empty((N,max_count))
     slices.fill(np.nan)
@@ -44,29 +49,37 @@ def calculate_resolution(binning, reco, truth):
 
     return avg_truth, resolution, slices, pred_over_truth
 
-def plot_resolution(avg_truths, resolution, title="", var="", last_bin= -1):
+def plot_reco_gen(reco, gen, binning, title=""):
+    plt.figure(figsize=(10,7))
+    plt.hist(reco, label="Reco", bins=binning, histtype='step')
+    plt.hist(gen, label="Gen", bins=binning, histtype='step')
+    plt.title(title)
+    plt.legend()
+    plt.savefig(f"./plots/{title}.pdf")
 
-    fig=plt.figure(figsize=(14,10))
-    plt.title(title,fontsize=25)
-    plt.ylabel(var + "Resolution",fontsize=24)
-    plt.xlabel(var + "Truth",fontsize=24)
-    plt.xticks(fontsize=20)
-    plt.yticks(fontsize=20)
-    plt.ylim(0,2*min(np.nanmax(resolution), 20)+0.01*np.nanmin(resolution))
+def plot_resolution(avg_truths, resolution, title="", var="", first_bin = 0, last_bin= -1, ax=None):
+
+
+    if ax == None:
+        ax = plt.subplot(1,1,1)
+
+    # fig=plt.figure(figsize=(14,10))
+    ax.set_title(title)
+    ax.set_ylabel(var + " Resolution")
+    ax.set_xlabel(var + " Truth")
+    # ax.set_xticks(fontsize=20)
+    # ax.set_yticks(fontsize=20)
+    ax.set_ylim(0,2*min(np.nanmax(resolution), 20)+0.01*np.nanmin(resolution))
     #plt.xlim(0,8)
     #plt.ylim(0,3)
-    plt.tick_params(direction='in',right=True,top=True,length=10)
-
-    ax = plt.subplot(1,1,1)
-    first_bin = 0
-
-    plt.errorbar(avg_truths[first_bin:last_bin],
+    ax.tick_params(direction='in',right=True,top=True,length=10)
+    ax.errorbar(avg_truths[first_bin:last_bin],
                  resolution[first_bin:last_bin],
                  linestyle="-",linewidth=2.0,capsize=4,
                  capthick=1.2,elinewidth=1.2,ecolor='black',
                  marker="o",color='dodgerblue',alpha=0.7)
 
-    plt.savefig(f"./plots/{title}_Resolution.pdf")
+    # plt.savefig(f"./plots/{title}_Resolution.pdf")
 
 
 # For use in response matrix
@@ -121,153 +134,169 @@ def plot_response(reco, truth, label, truth_bins,
     plt.savefig(f"./plots/{label}_Respons_Matrix.pdf")
 
 # ============= MAIN ==============
+if __name__=="__main__":
 # =============  Load Config  =============
-if len(sys.argv) > 1:
-    CONFIG_FILE = sys.argv[1]
-else:
-    CONFIG_FILE = "./configs/config.yaml"
 
-config = yaml.safe_load(open(CONFIG_FILE))
-print(f"\nLoaded {CONFIG_FILE}\n")
+    if len(sys.argv) > 1:
+        CONFIG_FILE = sys.argv[1]
+    else:
+        CONFIG_FILE = "./configs/config.yaml"
 
-mc_type = config['mc']  # Rapgap, Django, Pythia
-run_type = config['run_type']  # nominal, bootstrap, systematic
-processed_dir = config['main_dir']
-NIter = config['n_iterations']
-q_perp_bins = config['q_bins']
+    config = yaml.safe_load(open(CONFIG_FILE))
+    print(f"\nLoaded {CONFIG_FILE}\n")
 
-LABEL = config['identifier']
-ID = f"{mc_type}_{run_type}_{LABEL}"
+    mc_type = config['mc']  # Rapgap, Django, Pythia
+    run_type = config['run_type']  # nominal, bootstrap, systematic
+    processed_dir = config['main_dir']
+    NIter = config['n_iterations']
+    q_perp_bins = config['q_bins']
 
-NEVENTS = 100_000
+    LABEL = config['identifier']
+    ID = f"{mc_type}_{run_type}_{LABEL}"
 
-
-reco_vars = ['e_px', 'e_py', 'e_pz',
-             'jet_pt', 'jet_eta', 'jet_phi',
-             'jet_dphi', 'jet_qtnorm']
-
-gen_vars = ['gene_px', 'gene_py', 'gene_pz',
-            'genjet_pt', 'genjet_eta', 'genjet_phi',
-            'genjet_dphi', 'genjet_qtnorm']
-
-theta0_G = np.load(f"./npy_inputs/{ID}_Theta0_G.npy")
-theta0_S = np.load(f"./npy_inputs/{ID}_Theta0_S.npy")
-
-MASK_CUT = np.logical_and(theta0_G[:,0] != MASK_VAL, theta0_S[:,0] != MASK_VAL)
-theta0_G = theta0_G[MASK_CUT]
-theta0_S = theta0_S[MASK_CUT]
-
-# ====== Electron =======
-reco_e_px = theta0_S[:,0]
-reco_e_py = theta0_S[:,1]
-reco_e_pz = theta0_S[:,2]
-reco_e_pt = np.sqrt(reco_e_px**2 + reco_e_py**2)
-reco_e_phi = np.arccos(reco_e_px / reco_e_pt)
-reco_e_eta  = np.arcsinh(reco_e_pz / reco_e_pt)
-
-gen_e_px = theta0_G[:,0]
-gen_e_py = theta0_G[:,1]
-gen_e_pz = theta0_G[:,2]
-gen_e_pt = np.sqrt(gen_e_px**2 + gen_e_py**2)
-gen_e_phi = np.arccos(gen_e_px/gen_e_pt)
-gen_e_eta  = np.arcsinh(gen_e_pz / gen_e_pt)
-
-# ====== Jet =======
-reco_jet_pt = theta0_S[:,3]
-reco_jet_eta = theta0_S[:,4]
-reco_jet_phi  = theta0_S[:,5]
-
-gen_jet_pt = theta0_G[:,3]
-gen_jet_eta = theta0_G[:,4]
-gen_jet_phi  = theta0_G[:,5]
+    NEVENTS = 100_000
 
 
-assert(np.shape(gen_jet_pt) == np.shape(reco_jet_pt))
+    reco_vars = ['e_px', 'e_py', 'e_pz',
+                 'jet_pt', 'jet_eta', 'jet_phi',
+                 'jet_dphi', 'jet_qtnorm']
 
-# ====== Get Dictionary of variables ======
-res_vars = {}
-res_vars["e_phi"] = [reco_e_phi, gen_e_phi]
-res_vars["e_eta"] = [reco_e_eta, gen_e_eta]
-res_vars["e_pt"] = [reco_e_pt, gen_e_pt]
-res_vars["jet_phi"] = [reco_jet_phi, gen_jet_phi]
-res_vars["jet_eta"] = [reco_jet_eta, gen_jet_eta]
-res_vars["jet_pt"] = [reco_jet_pt, gen_jet_pt]
+    gen_vars = ['gene_px', 'gene_py', 'gene_pz',
+                'genjet_pt', 'genjet_eta', 'genjet_phi',
+                'genjet_dphi', 'genjet_qtnorm']
 
+    theta0_G = np.load(f"./npy_inputs/{ID}_Theta0_G.npy")
+    theta0_S = np.load(f"./npy_inputs/{ID}_Theta0_S.npy")
 
-# ====== Define Binning =======
-phi_binning = np.linspace(0, np.pi, 13)
-pt_binning  = np.linspace(0, 150 , 151)
+    MASK_CUT = np.logical_and(theta0_G[:,0] != MASK_VAL, theta0_S[:,0] != MASK_VAL)
+    theta0_G = theta0_G[MASK_CUT]
+    theta0_S = theta0_S[MASK_CUT]
 
-eta_binning = np.linspace(0, 10   , 11)
-x_binning = np.linspace(0, 1000, 1001 )
-z_binning = np.linspace(0, 1000, 1001 )
+    # ====== Electron =======
+    reco_e_px = theta0_S[:,0]
+    reco_e_py = theta0_S[:,1]
+    reco_e_pz = theta0_S[:,2]
+    reco_e_pt = np.sqrt(reco_e_px**2 + reco_e_py**2)
+    reco_e_phi = np.arccos(reco_e_px / reco_e_pt)
+    reco_e_eta  = np.arcsinh(reco_e_pz / reco_e_pt)
 
-# avg_gen_e_px, stdevs_gen_e_px, slices_gen_e_px, scale_gen_e_px = \
-# calculate_resolution(x_binning, reco_e_px, gen_e_px)
-# print(stdevs_gen_e_px)
+    gen_e_px = theta0_G[:,0]
+    gen_e_py = theta0_G[:,1]
+    gen_e_pz = theta0_G[:,2]
+    gen_e_pt = np.sqrt(gen_e_px**2 + gen_e_py**2)
+    gen_e_phi = np.arccos(gen_e_px/gen_e_pt)
+    gen_e_eta  = np.arcsinh(gen_e_pz / gen_e_pt)
 
-# avg_gen_e_pz, stdevs_gen_e_pz, slices_gen_e_pz, scale_gen_e_pz = \
-# calculate_resolution(z_binning, reco_e_pz, gen_e_pz)
-# print(stdevs_gen_e_pz)
+    # ====== Jet =======
+    reco_jet_pt = theta0_S[:,3]
+    reco_jet_eta = theta0_S[:,4]
+    reco_jet_phi  = theta0_S[:,5]
 
-
-# avg_gen_e_phi, stdevs_gen_e_phi, slices_gen_e_phi, scale_gen_e_phi = \
-# calculate_resolution(phi_binning, reco_e_phi, gen_e_phi)
-# plot_resolution(avg_gen_e_phi, stdevs_gen_e_phi, title="electron_Phi", var="$\phi^e$")
-# plot_response(reco_e_phi, gen_e_phi,"./", phi_binning, density=True)
-# print(stdevs_gen_e_phi)
-
-# avg_gen_jet_phi, stdevs_gen_jet_phi, slices_gen_jet_phi, scale_gen_jet_phi = \
-# calculate_resolution(phi_binning, reco_jet_phi, gen_jet_phi)
-# plot_resolution(avg_gen_jet_phi, stdevs_gen_jet_phi, title="jet_Phi", var="$\phi^\mathrm{jet}$",last_bin=-2)
-# # plot_response(reco_jet_phi, gen_jet_phi,"./", phi_binning, density=True)
-# print(stdevs_gen_jet_phi)
-
-# avg_gen_jet_pt, stdevs_gen_jet_pt, slices_gen_jet_pt, scale_gen_jet_pt = \
-# calculate_resolution(pt_binning, reco_jet_pt, gen_jet_pt)
-# plot_resolution(avg_gen_jet_pt, stdevs_gen_jet_pt, title="jet_pT", var="$p_\mathrm{T}^e$")
-# # plot_response(reco_pt, gen_jet_pt,"./",pt_binning, density=True)
-# print(stdevs_gen_jet_pt)
+    gen_jet_pt = theta0_G[:,3]
+    gen_jet_eta = theta0_G[:,4]
+    gen_jet_phi  = theta0_G[:,5]
 
 
+    assert(np.shape(gen_jet_pt) == np.shape(reco_jet_pt))
+
+    # ====== Get Dictionary of variables ======
+    res_vars = {}
+    res_vars["e_phi"] = [reco_e_phi, gen_e_phi]
+    res_vars["e_eta"] = [reco_e_eta, gen_e_eta]
+    res_vars["e_pt"] = [reco_e_pt, gen_e_pt]
+    res_vars["jet_phi"] = [reco_jet_phi, gen_jet_phi]
+    res_vars["jet_eta"] = [reco_jet_eta, gen_jet_eta]
+    res_vars["jet_pt"] = [reco_jet_pt, gen_jet_pt]
 
 
-# Calculated Variables, with and without Cuts
-# When weights are not applied, these are GEN/TRUTH LEVEL
-cuts_h1rpgp       = np.load(f'{processed_dir}/npy_files/{ID}_cuts.npy')
-jet_pT_h1rpgp     = np.load(f'{processed_dir}/npy_files/{ID}_jet_pT.npy')
-# cuts_h1rpgp = np.ones(len(jet_pT_h1rpgp), dtype=bool)
-jet_pT_h1rpgp     = np.load(f'{processed_dir}/npy_files/{ID}_jet_pT.npy')[cuts_h1rpgp]
-q_perp_h1rpgp     = np.load(f'{processed_dir}/npy_files/{ID}_q_perp.npy')[cuts_h1rpgp]
-asymm_phi_h1rpgp  = np.load(f'{processed_dir}/npy_files/{ID}_asymm_angle.npy')[cuts_h1rpgp]
-weights_h1rpgp    = np.load(f'{processed_dir}/npy_files/{ID}_weights.npy')[cuts_h1rpgp]
-mc_weights_h1rpgp = np.load(f"{processed_dir}/npy_files/{ID}_mc_weights.npy")[cuts_h1rpgp]
-nn_weights_h1rpgp = np.load(f"{processed_dir}/npy_files/{ID}_nn_weights.npy")
+    # ====== Define Binning =======
+    phi_binning = np.linspace(0, np.pi, 13)
+    pt_binning  = np.linspace(0, 150 , 151)
+    qperp_binning=np.linspace(0, 3.1,   32)
 
-ID = ID+"_RECO"
-reco_cuts_h1rpgp       = np.load(f'{processed_dir}/npy_files/{ID}_cuts.npy')
-reco_jet_pT_h1rpgp     = np.load(f'{processed_dir}/npy_files/{ID}_jet_pT.npy')
-# reco_cuts_h1rpgp = np.ones(len(jet_pT_h1rpgp), dtype=bool)
-reco_jet_pT_h1rpgp     = np.load(f'{processed_dir}/npy_files/{ID}_jet_pT.npy')[cuts_h1rpgp]
-reco_q_perp_h1rpgp     = np.load(f'{processed_dir}/npy_files/{ID}_q_perp.npy')[cuts_h1rpgp]
-reco_asymm_phi_h1rpgp  = np.load(f'{processed_dir}/npy_files/{ID}_asymm_angle.npy')[cuts_h1rpgp]
-reco_weights_h1rpgp    = np.load(f'{processed_dir}/npy_files/{ID}_weights.npy')[cuts_h1rpgp]
-reco_mc_weights_h1rpgp = np.load(f"{processed_dir}/npy_files/{ID}_mc_weights.npy")[cuts_h1rpgp]
-reco_nn_weights_h1rpgp = np.load(f"{processed_dir}/npy_files/{ID}_nn_weights.npy")
+    eta_binning = np.linspace(0, 10   , 11)
+    x_binning = np.linspace(0, 150, 151 )
+    z_binning = np.linspace(0, 150, 151 )
+
+    # avg_gen_e_px, stdevs_gen_e_px, slices_gen_e_px, scale_gen_e_px = \
+    # calculate_resolution(x_binning, reco_e_px, gen_e_px)
+    # print(stdevs_gen_e_px)
+
+    # avg_gen_e_pz, stdevs_gen_e_pz, slices_gen_e_pz, scale_gen_e_pz = \
+    # calculate_resolution(z_binning, reco_e_pz, gen_e_pz)
+    # print(stdevs_gen_e_pz)
 
 
-avg_gen_asymm, stdevs_asymm, slices_asymm, scale_asymm = \
-calculate_resolution(phi_binning, reco_asymm_phi_h1rpgp, asymm_phi_h1rpgp)
-plot_resolution(avg_gen_asymm, stdevs_asymm, title='AsymmetryAnglePhi_withCuts',
-                var="phi_asymmetry", last_bin=-1)
-# plot_resolution(avg_gen_jet_pt, stdevs_gen_jet_pt, title="jet_pT", var="$p_\mathrm{T}^e$")
-# plot_response(reco_jet_phi, gen_jet_phi,"./", phi_binning, density=True)
-print(stdevs_asymm)
+    # avg_gen_e_phi, stdevs_gen_e_phi, slices_gen_e_phi, scale_gen_e_phi = \
+    # calculate_resolution(phi_binning, ModPi(reco_e_phi), ModPi(gen_e_phi))
+    # plot_resolution(avg_gen_e_phi, stdevs_gen_e_phi, title="electron_Phi", var="$\phi^e$")
+    # # plot_response(reco_e_phi, gen_e_phi,"./", phi_binning, density=True)
+    # print(stdevs_gen_e_phi)
+    
+    # avg_gen_jet_phi, stdevs_gen_jet_phi, slices_gen_jet_phi, scale_gen_jet_phi = \
+    # calculate_resolution(phi_binning, ModPi(reco_jet_phi), ModPi(gen_jet_phi))
+    # plot_resolution(avg_gen_jet_phi, stdevs_gen_jet_phi, title="jet_Phi", var="$\phi^\mathrm{jet}$",last_bin=-2)
+    # # plot_response(reco_jet_phi, gen_jet_phi,"./", phi_binning, density=True)
+    # print(stdevs_gen_jet_phi)
 
-avg_gen_pt, stdevs_pt, slices_pt, scale_pt = \
-calculate_resolution(pt_binning, reco_jet_pT_h1rpgp, jet_pT_h1rpgp)
-plot_resolution(avg_gen_pt, stdevs_pt, title='pT_resolution_wCuts',
-                var="jet pT", last_bin=-1)
-# plot_resolution(avg_gen_jet_pt, stdevs_gen_jet_pt, title="jet_pT", var="$p_\mathrm{T}^e$")
-# plot_response(reco_jet_phi, gen_jet_phi,"./", phi_binning, density=True)
-print(stdevs_pt)
+    # avg_gen_jet_pt, stdevs_gen_jet_pt, slices_gen_jet_pt, scale_gen_jet_pt = \
+    # calculate_resolution(pt_binning, reco_jet_pt, gen_jet_pt)
+    # plot_resolution(avg_gen_jet_pt, stdevs_gen_jet_pt, title="jet_pT", var="$p_\mathrm{T}^e$")
+    # # plot_response(reco_pt, gen_jet_pt,"./",pt_binning, density=True)
+    # print(stdevs_gen_jet_pt)
+
+
+
+
+    # Calculated Variables, with and without Cuts
+    # When weights are not applied, these are GEN/TRUTH LEVEL
+    cuts_h1rpgp       = np.load(f'{processed_dir}/npy_files/{ID}_cuts.npy')
+    jet_pT_h1rpgp     = np.load(f'{processed_dir}/npy_files/{ID}_jet_pT.npy')
+    # cuts_h1rpgp = np.ones(len(jet_pT_h1rpgp), dtype=bool)
+    jet_pT_h1rpgp     = np.load(f'{processed_dir}/npy_files/{ID}_jet_pT.npy')[cuts_h1rpgp]
+    q_perp_h1rpgp     = np.load(f'{processed_dir}/npy_files/{ID}_q_perp.npy')[cuts_h1rpgp]
+    asymm_phi_h1rpgp  = np.load(f'{processed_dir}/npy_files/{ID}_asymm_angle.npy')[cuts_h1rpgp]
+    weights_h1rpgp    = np.load(f'{processed_dir}/npy_files/{ID}_weights.npy')[cuts_h1rpgp]
+    mc_weights_h1rpgp = np.load(f"{processed_dir}/npy_files/{ID}_mc_weights.npy")[cuts_h1rpgp]
+    nn_weights_h1rpgp = np.load(f"{processed_dir}/npy_files/{ID}_nn_weights.npy")
+
+    ID = ID+"_RECO"
+    reco_cuts_h1rpgp       = np.load(f'{processed_dir}/npy_files/{ID}_cuts.npy')
+    reco_jet_pT_h1rpgp     = np.load(f'{processed_dir}/npy_files/{ID}_jet_pT.npy')
+    # reco_cuts_h1rpgp = np.ones(len(jet_pT_h1rpgp), dtype=bool)
+    reco_jet_pT_h1rpgp     = np.load(f'{processed_dir}/npy_files/{ID}_jet_pT.npy')[cuts_h1rpgp]
+    reco_q_perp_h1rpgp     = np.load(f'{processed_dir}/npy_files/{ID}_q_perp.npy')[cuts_h1rpgp]
+    reco_asymm_phi_h1rpgp  = np.load(f'{processed_dir}/npy_files/{ID}_asymm_angle.npy')[cuts_h1rpgp]
+    reco_weights_h1rpgp    = np.load(f'{processed_dir}/npy_files/{ID}_weights.npy')[cuts_h1rpgp]
+    reco_mc_weights_h1rpgp = np.load(f"{processed_dir}/npy_files/{ID}_mc_weights.npy")[cuts_h1rpgp]
+    reco_nn_weights_h1rpgp = np.load(f"{processed_dir}/npy_files/{ID}_nn_weights.npy")
+
+
+    # avg_gen_asymm, stdevs_asymm, slices_asymm, scale_asymm = \
+    # calculate_resolution(phi_binning, ModPi(reco_asymm_phi_h1rpgp), ModPi(asymm_phi_h1rpgp))
+    # plot_resolution(avg_gen_asymm, stdevs_asymm, title='AsymmetryAnglePhi',
+    #                 var="phi_asymmetry", last_bin=-1)
+    # print(stdevs_asymm)
+
+    # plot_resolution(avg_gen_asymm, stdevs_asymm, title='AsymmetryAnglePhi_NOCUTS',
+    # plot_response(reco_jet_phi, gen_jet_phi,"./", phi_binning, density=True)
+
+    # avg_gen_pt, stdevs_pt, slices_pt, scale_pt = \
+    # calculate_resolution(pt_binning, reco_jet_pT_h1rpgp, jet_pT_h1rpgp)
+    # # plot_resolution(avg_gen_pt, stdevs_pt, title='pT_resolution_wCuts',
+    # plot_resolution(avg_gen_pt, stdevs_pt, title='pT_resolution_noCuts',
+    #                 var="jet pT", last_bin=-1)
+    # # plot_resolution(avg_gen_jet_pt, stdevs_gen_jet_pt, title="jet_pT", var="$p_\mathrm{T}^e$")
+    # # plot_response(reco_jet_phi, gen_jet_phi,"./", phi_binning, density=True)
+    # print(stdevs_pt)
+
+    avg_gen_qperp, stdevs_qperp, slices_qperp, scale_qperp = \
+    calculate_resolution(qperp_binning, reco_q_perp_h1rpgp, q_perp_h1rpgp)
+    print("*"*20)
+    print("Plotting Resolutions")
+    plot_resolution(avg_gen_qperp, stdevs_qperp, title='LeptonJet_qPerp',
+                    var="q_perp", last_bin=-1)
+    print(stdevs_qperp)
+    plot_reco_gen(reco_q_perp_h1rpgp, q_perp_h1rpgp, qperp_binning, title="q_perp_distributions" )
+    # plot_resolution(avg_gen_qperp, stdevs_qperp, title='qperpetryAnglePhi_NOCUTS',)
+
