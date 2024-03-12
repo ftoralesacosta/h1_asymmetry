@@ -8,6 +8,7 @@ from tensorflow.keras.layers import Dense, Input, Dropout
 from tensorflow.keras.models import Model
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
+import matplotlib.pyplot as plt
 
 import horovod.tensorflow.keras as hvd 
 import horovod.tensorflow
@@ -27,11 +28,20 @@ def weighted_binary_crossentropy(y_true, y_pred):
     return K.mean(t_loss)
 
 
-def reweight(events, model, verbose):
-    f = model.predict(events, batch_size=2000, verbose=verbose)
-    print("\n\nWeights in reweight_function = ",f)
+# def reweight(events, model, verbose=0):
+#     f = model.predict(events, batch_size=2000, verbose=verbose)
+#     if verbose >= 1:
+#         print("\n\nWeights in reweight_function = ",f)
+#     weights = f / (1. - f)
+#     return np.squeeze(np.nan_to_num(weights))
+
+def reweight(events, model, verbose=0):
+    f = np.nan_to_num(model.predict(events, batch_size=2000, verbose=verbose),posinf=1,neginf=0)
+    if verbose >= 1:
+        print("\n\nWeights in reweight_function = ", f)
     weights = f / (1. - f)
-    return np.squeeze(np.nan_to_num(weights))
+    # weights = weights[:,0]
+    return np.squeeze(np.nan_to_num(weights, posinf=1))
 
 class MultiFold():
     def __init__(self,
@@ -107,25 +117,17 @@ class MultiFold():
 
         # Two separate models ensures less bias
 
-        # earlystopping = EarlyStopping(patience=5,
-        #                           verbose=verbose,
-        #                           restore_best_weights=True)
-        # from NN (DCTR)
-
-        weights_pull = self.weights_MC_sim
-        weights_push = self.weights_MC_sim
-
-        # weights_pull = np.ones(len(theta0_S))
-        # weights_push = np.ones(len(theta0_S))
+        mean_mc_sim = np.mean(self.weights_MC_sim)
+        mean_mc_sim = 1.0
+        weights_pull = self.weights_MC_sim/mean_mc_sim
+        weights_push = self.weights_MC_sim/mean_mc_sim
 
         history = {}
         history['step1'] = []
         history['step2'] = []
 
         # Horovod Optimizer. Scale LR by number of workers, hvd.size()
-
         optimizer = tf.keras.optimizers.Adam(learning_rate=2e-6 * hvd.size()) #sqrt(size())
-
         optimizer = hvd.DistributedOptimizer(optimizer)
 
 
@@ -202,18 +204,33 @@ class MultiFold():
                                 verbose=self.verbose)
 
 
-            print("\n\nSTEP 1 REWEIGHT")
-            weights_pull = weights_push * \
-                reweight(self.theta0_S, model, self.verbose)
 
-            weights_pull[self.theta0_S[:, 0] == MASK_VAL] = 1
+            if hvd.rank() == 0:
+                print("Weights before setting MASK = ",weights_pull[self.theta0_S[:,0] == MASK_VAL])
+                fig = plt.figure(figsize=(10,7))
+                plt.hist(weights_pull[self.theta0_S[:,0] == MASK_VAL],bins=np.linspace(0,2,20))
+                plt.savefig(f"plots/{self.ID}_Iter{i}_step1_Weights.png")
+
+            # weights_pull = weights_push * \
+            #     reweight(self.theta0_S, model, self.verbose)
+            # OLD
+            # weights_pull[self.theta0_S[:, 0] == MASK_VAL] = 1.
+            # NEW
+            # weights_pull[self.theta0_S[:, 0] == MASK_VAL] = weights_push[self.theta0_S[:, 0] == MASK_VAL]
+
+            if hvd.rank() == 0:
+                print("\n\nSTEP 1 REWEIGHT")
+
+            new_weights = reweight(self.theta0_S, model, self.verbose)
+            new_weights[self.theta0_S[:, 0] == MASK_VAL] = 1.
+            weights_pull = weights_push * new_weights
 
             if hvd.rank() == 0:
                 history['step1'].append(hist_s1)
                 weights[i, :1, :] = weights_pull
                 models[i, 1] = model.get_weights()
+                print("STEP 2...")
 
-            print("STEP 2...")
             weights_2 = np.concatenate((self.weights_MC_sim, weights_pull))
             # having the original weights_MC_sim here means it learns
             # the weights FROM SCRATCH
@@ -258,18 +275,25 @@ class MultiFold():
             #steps per epoch
             # steps_per = nevents / (ngpus * batch_size)
 
-            print("\n\nSTEP 2 REWEIGHT")
+            if hvd.rank() == 0:
+                print("\n\nSTEP 2 REWEIGHT")
             weights_push = self.weights_MC_sim * \
                 reweight(self.theta0_G, model, self.verbose)
             #all gpus see the same model. The Data is split.
             #important: Here we can see that we are applying MC Weights!
             # no need to do this again later!
 
+            fig = plt.figure(figsize=(10,7))
+            plt.hist(weights_push[self.theta0_S[:,0] == MASK_VAL],bins=np.linspace(0,2,20))
+            plt.savefig(f"plots/{self.ID}_Iter{i}_step1_Weights.png")
+
             if hvd.rank() == 0:
                 print(f"Weights for Iteration {i} =", weights[i, 1:2, :])
 
             models[i, 2] = model.get_weights() #same model on ALL GPUS. HOROVOD FTW! 
-            weights[i, 1:2, :] = weights_push #plot and use. Take a look at weights_push normalization
+
+            weights[i, 1:2, :] = weights_push*mean_mc_sim #plot and use. Take a look at weights_push normalization
+            # weights[i, 1:2, :] = weights_push
             # V keeps normalization the same, ensuring the cross section doesn't change. 
             # want it to be the same as the sum of mc_weights.
             history['step2'].append(hist_s2)
