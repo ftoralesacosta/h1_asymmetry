@@ -54,6 +54,7 @@ theta_unknown_S = np.load(f"npy_inputs/{ID}_theta_unknown_S.npy")
 print("Loaded theta_unknown_S")
 weights_MC_sim = np.load(f"npy_inputs/{ID}_weights_mc_sim.npy")
 print("Loaded weights MC\n")
+mean_mc = np.nanmean(weights_MC_sim)
 
 #Get StandardScalar from raw data, apply to Rapgap in each iteration later   
 
@@ -62,6 +63,12 @@ ID_File = ID # FIXME will add be np.arrange(n_bootstraps)
 num_observables = 8
 if config['asymm_vars']:
     num_observables = 12
+
+if config['is_test']:
+    NEVENTS = 100_000  # usually not enough for results
+    n_epochs = 4
+    NIter = 5
+    NPasses = 2
 
 inputs = Input((num_observables, ))
 hidden_layer_1 = Dense(50, activation='relu')(inputs)
@@ -98,6 +105,8 @@ axes = np.ravel(axes[0, :, :])
 # axes = np.ravel(axes)
 
 
+verbosity = 0
+
 for p in tqdm(range(N_passes)):
 
     for i in range(N_iter):
@@ -109,15 +118,16 @@ for p in tqdm(range(N_passes)):
         # model = tf.keras.models.load_model(Model_Name)
         print(f"Success!")
 
-        weights_push = weights_MC_sim * reweight(theta0_G, model, verbose = 1)
-        print(f"Mean Weight = {np.mean(weights_push)}")
-        print(f"STDV Weight = {np.std(weights_push)} ")
+        weights_push = weights_MC_sim * reweight(theta0_G, model, verbose = verbosity)
+        if verbosity >= 1:
+            print(f"Mean Weight = {np.mean(weights_push)}")
+            print(f"STDV Weight = {np.std(weights_push)} ")
 
         stdevs[p][i] = np.std(weights_push)
         means[p][i] = np.mean(weights_push)
 
         #====== PLOTTING ======
-        axes[i].hist(weights_push, bins=np.linspace(0, 2, n_bins),
+        axes[i].hist(weights_push, bins=np.linspace(0, 1, n_bins),
                      label=f"Pass {p}",
                      alpha=0.5, color=d_colors[p],
                      linewidth=1.5, histtype='step')
@@ -128,30 +138,32 @@ for p in tqdm(range(N_passes)):
 
         pass_avgs[i] += weights_push
 
+    # pass_avgs[i] = pass_avgs[i]/N_passes
     pass_avgs[i] = pass_avgs[i]/N_passes
 
-np.save(f"./weights/{ID}_pass_avgs.npy", pass_avgs)
-print("Weights saved to ./weights/")
 
-# === Save Weight Figures ==== 
+# === Save  Figures ==== 
 plt.suptitle("Pre-Averaged Distributions", fontsize=25)
 plt.savefig(f"./plots/{LABEL}_Passes.pdf")
 
-np.save(f"./weights/{LABEL}_pass_avgs.npy", pass_avgs)
-np.save(f"./weights/{LABEL}_stds.npy", stdevs)
-np.save(f"./weights/{LABEL}_means.npy", means)
+# === Save Avg Weights ===
+np.save(f"./weights/{ID}_pass_avgs.npy", pass_avgs)
+print("Weights saved to ./weights/")
+# np.save(f"./weights/{LABEL}_pass_avgs.npy", pass_avgs)
+np.save(f"./weights/{ID}_stds.npy", stdevs)
+np.save(f"./weights/{ID}_means.npy", means)
 
+
+
+# ==================== Plotting STDEV and MEANS ======================#
 # Plot Standard Deviations
-
 fig = plt.figure(figsize=(10, 10))
 iterations = np.linspace(0, N_iter, N_iter, endpoint=False)
-print(np.shape(stdevs))
-print(iterations)
 
 for p in range(N_passes):
     plt.scatter(iterations, stdevs[p],
                 color=d_colors[p], label=f"Pass {p}")
-    plt.ylim(0, 0.6)
+    # plt.ylim(0, 0.5)
     plt.xlim(-0.5,N_iter+0.5)
     plt.legend(fontsize=15)
     plt.ylabel("$\sigma_{weights}$")
@@ -164,7 +176,7 @@ fig = plt.figure(figsize=(10, 10))
 for p in range(N_passes):
     plt.scatter(iterations, means[p],
                 color=colors[p], label=f"Pass {p}")
-    plt.ylim(0, 2.1)
+    # plt.ylim(0, 1.1)
     plt.xlim(-0.5,N_iter+0.5)
     plt.legend(fontsize=15)
     plt.ylabel("$\mu_{weights}$")

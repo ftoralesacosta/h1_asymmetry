@@ -137,6 +137,8 @@ print("INF in Theta0_G = ", np.inf in theta0_G)
 print("INF in Data = ", np.inf in theta_unknown_S)
 print("="*50)
 
+batch_size = 4_000
+# batch_size = 10_000
 
 for p in range(NPasses):
 
@@ -151,7 +153,8 @@ for p in range(NPasses):
                     theta_unknown_S, 
                     ID, ID_File+f"_Pass{p}", 
                     save_dir, n_epochs,
-                    None, dataw)
+                    None, dataw,
+                    batch_size=batch_size)
 
     weights, models, history = M_F.unfold()
     tf.keras.backend.clear_session()

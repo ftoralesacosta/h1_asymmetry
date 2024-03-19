@@ -14,13 +14,16 @@ print("MASK VAL = ", MASK_VAL)
 # 5 save np files with label from mc_name
 
 
-def npy_from_pkl(label, main_dir, pass_avg=True, suffix="", 
+def npy_from_pkl(label, main_dir=".", pass_avg=True, suffix="", 
                  load_NN=True, pkl_path="", mc="Rapgap", 
                  run_type="nominal", use_theta0_S = False, keys=[]):
 
     if (pkl_path == ""):
         pkl_path = "/pscratch/sd/f/fernando/h1_data"
         # pkl_path = "/clusterfs/ml4hep/yxu2/unfolding_mc_inputs/"
+
+    if 'bootstrap' in run_type:
+        run_type = 'nominal'
 
     # DATA LOADING
     if ".pkl" in pkl_path:
@@ -48,23 +51,30 @@ def npy_from_pkl(label, main_dir, pass_avg=True, suffix="",
 
     print("*"*30)
 
-    NN_step2_weights = np.load(f"./weights/{ID}_pass_avgs.npy")[-1]
+    NN_step2_weights = mc['wgt']
+    if load_NN:
+        NN_step2_weights = np.load(f"./weights/{label}_pass_avgs.npy")[-2]
+        # FIXME: There's a bug in checkpointing the last iteration...
+        # See the inference script, but theres something wrong with the LAST checkpoint
+        # Regardless of how many iterations. This is still 5 passes, just iter N-1
+        # NN_step2_weights = np.load(f"./weights/{label}_pass_avgs.npy")[0]  #Test March 12 2024
 
-    if pass_avg:
-        NN_step2_weights = np.load(f"./weights/{label}_pass_avgs.npy")[-1]
+    # if pass_avg:  # depricated March 2024 (will always want pass avg...
+    #     NN_step2_weights = np.load(f"./weights/{label}_pass_avgs.npy")[-1]
         # Taking the last element grabs the last omnifold ITERATION
         # take the last iteration, MultiFold learns from SCRATCH
 
-    #FIXME: rm this. Test March 11 2024
-    # NN_step2_weights = np.load(f"./weights/{ID}_pass_avgs.npy")[3]
-
     print("WEIGHTS SHAPE = ", np.shape(NN_step2_weights))
-    NEVENTS = min(len(NN_step2_weights), len(mc))  
+    NEVENTS = min(len(NN_step2_weights), len(mc))
     NN_step2_weights = NN_step2_weights[:NEVENTS]
     mc = mc[:NEVENTS]
-    # ensures the lengths are the same.
+    # ^ ensures the lengths are the same. ^
     # Was previously checked, if mismatch, the TAIL is
     # cut. So taking the first N events matches eventns to weights
+
+
+    #FIXME: rm this. Test March 11 2024
+    # NN_step2_weights = np.load(f"./weights/{ID}_pass_avgs.npy")[3]
 
     theta0_G = mc[keys].to_numpy()
 
@@ -73,9 +83,10 @@ def npy_from_pkl(label, main_dir, pass_avg=True, suffix="",
     pass_reco = np.array(mc['pass_reco'])
     pass_truth = np.array(mc['pass_truth'])
     pass_fiducial = np.array(mc['pass_fiducial'])
+
+
     del mc
     _ = gc.collect()
-
 
     # NN_step2_weights = np.load(f"../weights/{label}_pass_avgs.npy")[-1]
     # NN_step2_weights = np.load(f"../h1_models/{label}/{label}_Pass0_Step2_Weights.npy")[-1]
@@ -99,7 +110,8 @@ def npy_from_pkl(label, main_dir, pass_avg=True, suffix="",
                     asymm_phi, jet_qT_norm, Q2)
 
 
-    weights = weights_MC_sim * NN_step2_weights
+    # weights = weights_MC_sim * NN_step2_weights
+    weights = NN_step2_weights  # mc_weights already applied. Look at inference script!
 
     print("Cuts SHAPE = ", np.shape(cuts))
     print("SHAPE after Cuts = ", np.shape(weights[cuts]))
@@ -368,8 +380,15 @@ if __name__ == '__main__':
     if pass_avg:
         print("USING PASS AVGERAGED WEIGHTS")
 
+    if 'bootstrap' in run_type:
+        load_NN = False
     print("Calculating Kinematics")
     # npy_from_npy(ID, main_dir, pass_avg, mc=mc)
     # npy_from_npy(ID, main_dir, pass_avg, mc=mc, use_theta0_S=True)  # reco
-    npy_from_pkl(ID, main_dir, pass_avg, mc=mc, run_type=run_type)
-    npy_from_pkl(ID, main_dir, pass_avg, mc=mc, run_type=run_type, use_theta0_S = True)
+    print("Doing Theta0_G)")
+    npy_from_pkl(ID, main_dir, pass_avg, mc=mc,
+                 run_type=run_type, load_NN=load_NN)
+
+    print("Doing Theta0_S)")
+    npy_from_pkl(ID, main_dir, pass_avg, mc=mc, run_type=run_type,
+                 load_NN=load_NN, use_theta0_S = True)
