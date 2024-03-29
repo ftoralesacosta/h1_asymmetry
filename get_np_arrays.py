@@ -53,7 +53,7 @@ def npy_from_pkl(label, main_dir=".", pass_avg=True, suffix="",
 
     NN_step2_weights = mc['wgt']
     if load_NN:
-        NN_step2_weights = np.load(f"./weights/{label}_pass_avgs.npy")[-2]
+        NN_step2_weights = np.load(f"./weights/{label}_pass_avgs.npy")[-1]
         # FIXME: There's a bug in checkpointing the last iteration...
         # See the inference script, but theres something wrong with the LAST checkpoint
         # Regardless of how many iterations. This is still 5 passes, just iter N-1
@@ -380,6 +380,7 @@ if __name__ == '__main__':
     if pass_avg:
         print("USING PASS AVGERAGED WEIGHTS")
 
+    load_NN = True
     if 'bootstrap' in run_type:
         load_NN = False
     print("Calculating Kinematics")
