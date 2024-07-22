@@ -1,3 +1,4 @@
+'''This code is based off of 'make_gifs.py' '''
 import sys
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
@@ -7,6 +8,7 @@ from get_np_arrays import *
 from process_functions import *
 
 colors = ['#348ABD', '#C70039', '#FF5733', '#FFC300', '#65E88F', '#40E0D0']
+
 
 # CONFIG FILE
 if len(sys.argv) > 1:
@@ -21,7 +23,7 @@ mc = config['mc']  # Rapgap, Django, Pythia
 run_type = config['run_type']  # nominal, bootstrap, systematic
 processed_dir = config['main_dir']
 NIter = config['n_iterations']
-q_perp_bins = config['q_bins']
+q_perp_bins = [0.0, 2.0, 8.0]
 
 LABEL = config['identifier']
 ID = f"{mc}_{run_type}_{LABEL}"
@@ -55,6 +57,7 @@ run_type = Django_config['run_type']  # nominal, bootstrap, systematic
 processed_dir = Django_config['main_dir']
 NIter = Django_config['n_iterations']
 q_perp_bins = Django_config['q_bins']
+q_perp_bins = [0.0, 2.0, 8.0]
 
 LABEL = Django_config['identifier']
 DjID = f"{mc}_{run_type}_{LABEL}"
@@ -164,13 +167,14 @@ for i in range(NIter):
                      q_perp_h1djgo ,asymm_phi_h1djgo,
                      mc_weights_h1djgo)
 
-    fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(18, 8), 
-                             constrained_layout=True)
+
+    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(9, 4), constrained_layout=True)
     axes = axes.ravel()
 
     for ix, ax in enumerate(axes):
         ax.plot(h1_rpgp_phi["bin_centers"], h1_rpgp_phi[str(ix)],
-                color=colors[4], label="H1 OmniFold [Rapgap]")
+                color='black', label="H1 Data")
+                # color=colors[4], label="H1 OmniFold [Rapgap]")
 
         ax.plot(rpgp_phi["bin_centers"], rpgp_phi[str(ix)],
                 color=colors[2], linestyle="--", label="Rapgap")
@@ -179,44 +183,18 @@ for i in range(NIter):
         #         color=colors[5], label="H1 OmniFold [Django]")
 
         ax.plot(djgo_phi["bin_centers"], djgo_phi[str(ix)],
-                colors[5], linestyle="--", label="Django")
-
-        # ax.set_ylim(0.199, 0.461)
-        # ax.legend(fontsize=10)
+                color="darkorange", linestyle="--", label="Django")
 
         if (ix == 0):
             ax.legend(fontsize=12)
         if (ix % 4 == 0):
-            ax.set_ylabel("Normalized Counts")
+            ax.set_ylabel("Counts")
 
-        if (ix > 3):
-            ax.set_xlabel(r"$\phi^\circ$")
+        ax.set_xlabel(r"$\phi$ [rad]")
 
         ax.set_title(r"$%i < q_\perp < %i$ [GeV]"%(q_perp_bins[ix],
                                                    q_perp_bins[ix+1]), 
-                     fontsize=20)
-
-    # Jet pT Histogram
-    pt_bins = np.linspace(10,50,41)
-    axes[-1].hist(jet_pT_h1rpgp, weights=pass_avg_weights[i][cuts_h1rpgp],
-                  color=colors[2], label="H1 OmniFold [Rapgap]", histtype='step',
-                  density=True, bins=pt_bins)
-
-    axes[-1].hist(jet_pT_h1rpgp, weights=mc_weights_h1rpgp,
-                  color=colors[2], linestyle="--", label="Rapgap", histtype='step',
-                  density=True, bins=pt_bins)
-
-    # axes[-1].hist(jet_pT_h1djgo, weights=django_pass_avg_weights[i][cuts_h1djgo],
-    #               color=colors[5], label="H1 OmniFold [Django]", histtype='step',
-    #               density=True, bins=pt_bins)
-
-    axes[-1].hist(jet_pT_h1djgo, weights=mc_weights_h1djgo,
-                  color=colors[5], linestyle="--", label="Django", histtype='step',
-                  density=True, bins=pt_bins)
-
-    axes[-1].set_title("jet pT")
-    axes[-1].set_xlabel("[GeV]")
-    axes[-1].set_xlim(9.9,50.1)
+                                                    fontsize=20)
 
     plt.suptitle(fr"$\phi$ Distributions [Iteration {i}]", fontsize=25)
     plt.savefig(f"./plots/{ID}_Phi_Distributions_Iteration_{i}.png")
