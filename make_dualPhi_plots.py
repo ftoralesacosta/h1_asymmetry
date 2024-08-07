@@ -141,8 +141,8 @@ print("cuts       SHAPE = ", np.shape(cuts_h1rpgp))
 print()
 
 for i in range(NIter):
-    phi_bins = np.linspace(0,3.1416,8)
-    phi_bins = np.linspace(0,3.1416,12)
+    phi_bins = np.linspace(0,3.1416,9)
+    phi_bins = np.linspace(0,3.1416,13)
     h1_rpgp_phi = {}
     h1_djgo_phi = {}
     rpgp_phi = {}
