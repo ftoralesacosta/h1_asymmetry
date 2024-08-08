@@ -29,6 +29,10 @@ LABEL = config['identifier']
 ID = f"{mc}_{run_type}_{LABEL}"
 
 
+n_phi_bins = config['n_phi_bins']
+phi_bins = np.linspace(0, 3.14159, n_phi_bins+1)
+edges=np.stack((phi_bins[:-1],phi_bins[1:])).T
+
 # Load npy Files
 cuts_h1rpgp       = np.load(f'{processed_dir}/npy_files/{ID}_cuts.npy')
 jet_pT_h1rpgp     = np.load(f'{processed_dir}/npy_files/{ID}_jet_pT.npy')[cuts_h1rpgp]
@@ -140,6 +144,21 @@ print("mc weights SHAPE = ", np.shape(mc_weights_h1rpgp))
 print("cuts       SHAPE = ", np.shape(cuts_h1rpgp))
 print()
 
+bootstrap_errors = []
+sys_errors = []
+for q_range in ['low','high']:
+
+    stat_file = open(f'PHI_q{q_range}_bootstrap_errors.pkl', 'rb')
+    sys_file = open(f'./pkls/PHI_{q_range}_uncertainties.pkl', 'rb')
+
+    bootstrap_errors.append(pickle.load(stat_file)['phi'])
+    sys_errors.append(pickle.load(sys_file)['total']['phi'])
+
+    sys_file.close()
+    stat_file.close()
+
+print(sys_errors)
+
 for i in range(NIter):
     phi_bins = np.linspace(0,3.1416,9)
     phi_bins = np.linspace(0,3.1416,13)
@@ -171,30 +190,49 @@ for i in range(NIter):
     fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(9, 4), constrained_layout=True)
     axes = axes.ravel()
 
+
+    #you have iterate through the q_perp ranges with ix.range
+    # you have a low and high pkl for systematics and statistics. Make a np array where the
+    #first index is ix, and then you can simply plot the errors!
+
+
     for ix, ax in enumerate(axes):
-        ax.plot(h1_rpgp_phi["bin_centers"], h1_rpgp_phi[str(ix)],
-                color='black', label="H1 Data")
+        ax.errorbar(h1_rpgp_phi["bin_centers"], h1_rpgp_phi[str(ix)], yerr=bootstrap_errors[ix],
+                color='black', label="H1 Data", ls='none', ms=4, marker='o')
                 # color=colors[4], label="H1 OmniFold [Rapgap]")
 
-        ax.plot(rpgp_phi["bin_centers"], rpgp_phi[str(ix)],
-                color=colors[2], linestyle="--", label="Rapgap")
+        #FIXME work on this next
+        for x in range(len(edges)):
+            ax.fill_between(edges[x],h1_rpgp_phi[str(ix)][x]-sys_errors[ix][x],
+                            h1_rpgp_phi[str(ix)][x]+sys_errors[ix][x], alpha=0.2,color='k',)
+
+        # ax.plot(rpgp_phi["bin_centers"], rpgp_phi[str(ix)],
+        #         color=colors[2], linestyle="--", label="Rapgap")
+
+        offset = 0.1
+        ax.plot(rpgp_phi['bin_centers'], rpgp_phi[str(ix)], label="RAPGAP",ls='none',marker="P",
+                         fillstyle='none',markeredgewidth=2,ms=10,alpha=0.9, color=colors[2])
+        offset = -0.1
+        ax.plot(djgo_phi["bin_centers"]+offset, djgo_phi[str(ix)],label="DJANGOH",ls='none',marker="D",
+                         fillstyle='none',markeredgewidth=2,ms=7,alpha=0.8, color="darkorange")
 
         # ax.plot(h1_djgo_phi["bin_centers"], h1_djgo_phi[str(ix)],
         #         color=colors[5], label="H1 OmniFold [Django]")
 
-        ax.plot(djgo_phi["bin_centers"], djgo_phi[str(ix)],
-                color="darkorange", linestyle="--", label="Django")
+        # ax.plot(djgo_phi["bin_centers"], djgo_phi[str(ix)],
+        #         color="darkorange", linestyle="--", label="Django")
 
         if (ix == 0):
             ax.legend(fontsize=12)
         if (ix % 4 == 0):
-            ax.set_ylabel("Counts")
+            ax.set_ylabel("Normalized Counts")
 
         ax.set_xlabel(r"$\phi$ [rad]")
+        ax.set_ylim(0, 0.6)
 
-        ax.set_title(r"$%i < q_\perp < %i$ [GeV]"%(q_perp_bins[ix],
-                                                   q_perp_bins[ix+1]), 
-                                                    fontsize=20)
+        ax.set_title(r"$%i < q_\perp < %i$ [GeV]" % (q_perp_bins[ix],
+                                                     q_perp_bins[ix+1]),
+                     fontsize=20)
 
-    plt.suptitle(fr"$\phi$ Distributions [Iteration {i}]", fontsize=25)
+    # plt.suptitle(fr"$\phi$ Distributions [Iteration {i}]", fontsize=25)
     plt.savefig(f"./plots/{ID}_Phi_Distributions_Iteration_{i}.png")
