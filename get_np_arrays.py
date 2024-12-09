@@ -240,7 +240,7 @@ def get_cuts(pass_fiducial, pass_truth, q_perp_mag,
     # jet_pT_mag_nan = ~np.isnan(jet_pT_mag)
 
     pT_cut = jet_pT_mag > 10.
-    q_over_pT_cut = jet_qT/jet_pT_mag < 0.3
+    q_over_pT_cut = q_perp_mag/jet_pT_mag < 0.3
     qT_cut = np.where((jet_qT < 0.25), True, False)
     phi_nan_cut = ~np.isnan(asymm_phi)
     jet_pT_mag_nan = ~np.isnan(jet_pT_mag)
@@ -386,7 +386,7 @@ if __name__ == '__main__':
         load_NN = False
     print("Calculating Kinematics")
     # npy_from_npy(ID, main_dir, pass_avg, mc=mc)
-    npy_from_npy(ID, main_dir, pass_avg, mc=mc, use_theta0_S=True)  # reco
+    # npy_from_npy(ID, main_dir, pass_avg, mc=mc, use_theta0_S=True)  # reco
     print("Doing Theta0_G)")
     npy_from_pkl(ID, main_dir, pass_avg, mc=mc,
                  run_type=run_type, load_NN=load_NN)
