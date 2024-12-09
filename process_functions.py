@@ -49,55 +49,63 @@ def averages_in_qperp_bins(dic, q_perp_bins, q_perp, asymm_phi,
 
 
 
-def get_bootstrap_errors(boot_ensemble,q_perp,q_perp_bins,asymm_phi,cuts,jetpT,title=""):
+def get_bootstrap_errors(boot_ensemble, q_perp, q_perp_bins,
+                         asymm_phi, cuts, skips=[], title=""):
+# def get_bootstrap_errors(boot_ensemble,q_perp,q_perp_bins,asymm_phi,cuts,jetpT,title=""):
     #takes q_perp and and phi, and calcs weighted <cos(n*phi)> for all ensemble iterations
 
     N_Bootstraps = np.shape(boot_ensemble)[0]
+    print(f"N_Bootstraps = {N_Bootstraps}")
     N_Bins = len(q_perp_bins)-1
-    digits = np.digitize(q_perp,q_perp_bins)-1
+    digits = np.digitize(q_perp, q_perp_bins)-1
 
-    q_avg = np.zeros((N_Bootstraps,N_Bins))
-    phi_avg = np.zeros((N_Bootstraps,N_Bins))
-    cos1_avg = np.zeros((N_Bootstraps,N_Bins))
-    cos2_avg = np.zeros((N_Bootstraps,N_Bins))
-    cos3_avg = np.zeros((N_Bootstraps,N_Bins))
-    jetpT_avg = np.zeros((N_Bootstraps,N_Bins))
+    q_avg = np.zeros((N_Bootstraps, N_Bins))
+    phi_avg = np.zeros((N_Bootstraps, N_Bins))
+    cos1_avg = np.zeros((N_Bootstraps, N_Bins))
+    cos2_avg = np.zeros((N_Bootstraps, N_Bins))
+    cos3_avg = np.zeros((N_Bootstraps, N_Bins))
+    # jetpT_avg = np.zeros((N_Bootstraps,N_Bins))
 
-    #Just Used for Plotting:
-    fig,axes = plt.subplots(2,3,figsize=(16,9))
+    # Just Used for Plotting:
+    fig, axes = plt.subplots(2, 3, figsize=(16, 9))
     q_centers = (q_perp_bins[:-1]+q_perp_bins[1:])/2.0
     q_width = (q_perp_bins[1]+q_perp_bins[0])/2
     axes = np.ravel(axes)
 
     for istrap in tqdm(range(N_Bootstraps)):
 
-        weights=boot_ensemble[istrap][cuts] #This is what fundamentally changes per iteration
+        weights = boot_ensemble[istrap][cuts]
+        # This is what fundamentally changes per iteration
+
+        if skips:
+            if istrap in skips:
+                print("Skipping", istrap)
+                continue
 
         q_w = q_perp*weights
         phi_w = np.cos(asymm_phi)*weights
         cos1_w = np.cos(1*asymm_phi)*weights
         cos2_w = np.cos(2*asymm_phi)*weights
         cos3_w = np.cos(3*asymm_phi)*weights
-        jetpT_w = jetpT*weights
-
+        # jetpT_w = jetpT*weights
 
         for i in range(N_Bins):
-            bin_mask = digits==i
+            bin_mask = digits == i
             bin_wsum = np.sum(weights[bin_mask])
-            
+
             q_avg[istrap,i]    = np.nansum(q_w[bin_mask])/bin_wsum
-            phi_avg[istrap,i]  = np.nansum(asymm_phi[bin_mask])/bin_wsum
+            phi_avg[istrap,i]  = np.nansum(phi_w[bin_mask])/bin_wsum
             cos1_avg[istrap,i] = np.nansum(cos1_w[bin_mask])/bin_wsum
             cos2_avg[istrap,i] = np.nansum(cos2_w[bin_mask])/bin_wsum
             cos3_avg[istrap,i] = np.nansum(cos3_w[bin_mask])/bin_wsum
-            jetpT_avg[istrap,i]    = np.nansum(jetpT_w[bin_mask])/bin_wsum
+            # jetpT_avg[istrap,i]    = np.nansum(jetpT_w[bin_mask])/bin_wsum
 
         axes[0].errorbar(q_centers,phi_avg[istrap],xerr=q_width,alpha=0.2)
         axes[1].errorbar(q_centers,cos1_avg[istrap],xerr=q_width,alpha=0.2)
         axes[2].errorbar(q_centers,cos2_avg[istrap],xerr=q_width,alpha=0.2)
         axes[3].errorbar(q_centers,cos3_avg[istrap],xerr=q_width,alpha=0.2)
-        axes[4].errorbar(q_centers,jetpT_avg[istrap],xerr=q_width,alpha=0.2)
-        axes[4].errorbar(q_centers,jetpT_avg[istrap],xerr=q_width,alpha=0.2)
+        # axes[4].errorbar(q_centers,jetpT_avg[istrap],xerr=q_width,alpha=0.2)
+        # axes[4].errorbar(q_centers,jetpT_avg[istrap],xerr=q_width,alpha=0.2)
 
         axes[0].set_ylabel("$\phi$")
         axes[1].set_ylabel("$\cos(\phi)$")
@@ -113,7 +121,7 @@ def get_bootstrap_errors(boot_ensemble,q_perp,q_perp_bins,asymm_phi,cuts,jetpT,t
 
     plt.suptitle(title)
     plt.tight_layout()
-    plt.savefig("Bootstrap_Ensemble.pdf")
+    plt.savefig("./plots/Bootstrap_Ensemble.pdf")
 
     q_errors = np.zeros(N_Bins)
     phi_errors = np.zeros(N_Bins)
@@ -148,7 +156,7 @@ def get_bootstrap_errors(boot_ensemble,q_perp,q_perp_bins,asymm_phi,cuts,jetpT,t
 
 
 #Look at distribution of asymmetry angle inside q_perp Bins
-def phi_inside_qperp(dic, q_perp_bins,phi_bins,q_perp,asymm_phi,weights):
+def phi_inside_qperp(dic, q_perp_bins,phi_bins,q_perp,asymm_phi,weights,label=''):
 
     digits = np.digitize(q_perp,q_perp_bins)-1
     N_Bins = len(q_perp_bins)-1
@@ -158,9 +166,12 @@ def phi_inside_qperp(dic, q_perp_bins,phi_bins,q_perp,asymm_phi,weights):
     for i in range(N_Bins):
         bin_mask = digits==i
 
-        dic[str(i)],_ = np.histogram(asymm_phi[bin_mask],bins=phi_bins,weights=weights[bin_mask],density=True)
+        dic[str(i)],_ = np.histogram(asymm_phi[bin_mask],
+                                     bins=phi_bins,
+                                     weights=weights[bin_mask],
+                                     density=True)
 
-    file = open('phi_inside_qperp.pkl', 'wb')
+    file = open(label+'phi_inside_qperp.pkl', 'wb')
     pickle.dump(dic, file,protocol=pickle.HIGHEST_PROTOCOL)
     file.close()
         
