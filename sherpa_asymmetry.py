@@ -90,21 +90,14 @@ def txt_to_dataDict(filename):
 
 # Example usage
 if __name__ == "__main__":
-    # l_incoming = [10.0, 0.0, 0.0, 10.0]
-    # l_scattered = [8.0, 1.0, 1.0, 7.8]
-    # p_jet = [3.0, -1.0, 2.0] # Jet momentum 3-vector [p_jet_x, p_jet_y, p_jet_z]
-    # # Calculate the jet qT
-    # jet_qT = calculate_jet_qT(l_incoming, l_scattered, p_jet)
-    # print(f"Jet qT: {jet_qT:.3f} GeV")
-
-    # sherpa_data = txt_to_dataDict('sherpa_events.txt')
-    # filename = './theory_files/sherpa_asymm.pkl'
+    sherpa_data = txt_to_dataDict('sherpa_events.txt')
+    filename = './theory_files/sherpa_asymm.pkl'
 
     # sherpa_data = txt_to_dataDict('sherpa_events_justNLO.txt')
     # filename = './theory_files/sherpa_asymm_justNLO.pkl'
 
-    sherpa_data = txt_to_dataDict('sherpa_eventsLO.txt')
-    filename = './theory_files/sherpa_asymmLO.pkl'
+    # sherpa_data = txt_to_dataDict('sherpa_eventsLO.txt')
+    # filename = './theory_files/sherpa_asymmLO.pkl'
 
     q_perp_bins = [ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  8., 10.]
 
