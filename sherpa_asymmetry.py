@@ -97,16 +97,22 @@ if __name__ == "__main__":
     # jet_qT = calculate_jet_qT(l_incoming, l_scattered, p_jet)
     # print(f"Jet qT: {jet_qT:.3f} GeV")
 
-    sherpa_data = txt_to_dataDict('sherpa_events.txt')
+    # sherpa_data = txt_to_dataDict('sherpa_events.txt')
+    # filename = './theory_files/sherpa_asymm.pkl'
+
     # sherpa_data = txt_to_dataDict('sherpa_events_justNLO.txt')
-    # sherpa_data = txt_to_dataDict('sherpa_eventsLO.txt')
+    # filename = './theory_files/sherpa_asymm_justNLO.pkl'
+
+    sherpa_data = txt_to_dataDict('sherpa_eventsLO.txt')
+    filename = './theory_files/sherpa_asymmLO.pkl'
+
     q_perp_bins = [ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  8., 10.]
 
     q_perp = sherpa_data['q_perp']
     asymm_phi = sherpa_data['asymm_phi']
     weights = sherpa_data['MC Event Weight']
     Q2 = sherpa_data['Q2']
-    jet_pT_mag = np.sqrt(sherpa_data['Jet_px']**2 + sherpa_data['Jet_py'])
+    jet_pT_mag = np.sqrt(sherpa_data['Jet_px']**2 + sherpa_data['Jet_py']**2)
     print('mean jet pT', np.nanmean(jet_pT_mag))
 
     jet_qT = calculate_jet_qT(sherpa_data['E_px'],
@@ -135,13 +141,11 @@ if __name__ == "__main__":
     print('cos2 = ',sherpa_asymm['cos2'])
     print('cos3 = ',sherpa_asymm['cos3'])
 
-    filename = './theory_files/sherpa_asymm.pkl'
-    # filename = './theory_files/sherpa_asymm_justNLO.pkl'
-    # filename = './theory_files/sherpa_asymmLO.pkl'
     with open(filename, 'wb') as file:
         pickle.dump(sherpa_asymm, file, protocol=pickle.HIGHEST_PROTOCOL)
+    print("\nFILENAME = ", filename)
 
-          
+
 
 
 #[Q2, y, E_px, E_py, E_pz, E_eta, Jet_px, Jet_py, Jet_pz, Jet_eta, asymm_phi, q_perp, cos1, cos2, cos3, MC Event Weight]
