@@ -211,7 +211,7 @@ class MultiFold():
             # might be redundant, since they're skipped with X_train[mask]
 
             if hvd.rank() == 0:
-                history['step1'].append(hist_s1)
+                history['step1'].append(hist_s1.history)
                 weights[i, :1, :] = weights_pull
                 models[i, 1] = model.get_weights()
                 print("STEP 2...")
@@ -276,7 +276,7 @@ class MultiFold():
                 weights[i, 1:2, :] = weights_push
                 # V keeps normalization the same, ensuring the cross section doesn't change. 
                 # want it to be the same as the sum of mc_weights.
-                history['step2'].append(hist_s2)
+                history['step2'].append(hist_s2.history)
 
         K.clear_session()
 
