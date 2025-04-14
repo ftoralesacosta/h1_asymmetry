@@ -17,7 +17,8 @@ To run the simple scripts, run:
         - This calculates the physics kinematic observables of interest
         - Most importantly, this applies CUTS
         validation and debugging before looking at physics.
-    5. `python make_gifs.py [configs/config_file.yaml]`
+    5. in the notebooks directory, the main notebook for the resultss is *Plot_Asymmetry.ipynb*
+    6. `python make_gifs.py [configs/config_file.yaml]`
         - This generates several phi_asymm plots and cos[n*phi] plots, and generates a gif
 
 When running an perlmutter, you will need to load two modules:
