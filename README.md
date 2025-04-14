@@ -7,7 +7,7 @@ To run the simple scripts, run:
 
     1. `process_data.py [configs/config_file.yaml]`
         - This saves Theta_G, Theta_S, and Theta_unknown_S as npy files
-    2. `python no_pkl_unfolding.py [configs/config_file.yaml]`
+    2. `python hvd_train.py [configs/config_file.yaml]`
         - This runs the unfolding, calling unfold.py
     <!-- 3. `python inference_reweight.py [configs/config_file.yaml]` -->
     3. 'python plot_weights.py [configs/config_file.yaml]'
@@ -20,10 +20,9 @@ To run the simple scripts, run:
     5. `python make_gifs.py [configs/config_file.yaml]`
         - This generates several phi_asymm plots and cos[n*phi] plots, and generates a gif
 
-The Horovod versions are run similarly, but bullet 1. may need you to run with `horovodrun -p 8 python hvd_unfolding.py [configs/config_file.yaml] `
-
-
 When running an perlmutter, you will need to load two modules:
 
 `module load cpe/23.03`
 `module load tensorflow/2.6.0`
+
+Single GPU tasks should work well, despite supporting Horovod. For bootstrapping, make sure to run a job array. Use srun in interactive nodes
