@@ -8,6 +8,7 @@ import yaml
 import tensorflow as tf
 import tensorflow.keras
 import horovod.tensorflow.keras as hvd
+import pickle
 
 # from get_np_arrays import get_kinematics
 from unfold_hvd import MultiFold
@@ -166,6 +167,8 @@ for p in range(NPasses):
 
     np.save(f"{save_dir}/{ID}/{ID_File}_Pass{p}_Step1_Weights.npy", weights[:, 0:1, :])
     np.save(f"{save_dir}/{ID}/{ID_File}_Pass{p}_Step1_History.npy", weights[:, 0:1, :])
+    with open(f'{save_dir}/{ID}/{ID_File}_Pass{p}_History.pkl', 'wb') as f:
+        pickle.dump(history, f)
 
     if hvd.rank() == 0:
         print(f"Pass {p} took {time.time() - start} seconds \n")
